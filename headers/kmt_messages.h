@@ -12,7 +12,8 @@ typedef struct { // 호가
 typedef struct { //시세정보
   char stock_code[6];       // 종목코드
   char stock_name[50];      // 종목명
-  float price;              // 시세(현재가)
+  int price;              // 시세(현재가)
+
   long volume;              // 거래량
   int change;               // 대비
   char rate_of_change[10];  // 등락률
@@ -26,3 +27,17 @@ typedef struct {
 	hdr header;
 	kmt_current_market_price body[4];
 } kmt_current_market_prices;
+
+
+// 종목 정보 구조체
+typedef struct {
+	char stock_code[6];
+	char stock_name[50];
+} stock_info;
+
+// 종목 정보 송수신 구조체
+typedef struct {
+	hdr header;
+	stock_info body[4]; // 총 종목이 4개로 구성
+} kmt_stock_infos;
+
