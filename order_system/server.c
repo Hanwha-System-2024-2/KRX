@@ -5,6 +5,7 @@
 #include <arpa/inet.h>
 #include "../headers/kft_common.h"
 #include "../headers/kft_db_sql.h"
+#include "../headers/kft_ipc.h"
 
 #define PORT 8081
 
@@ -62,8 +63,12 @@ void process_order(int client_socket, fkq_order *order, MYSQL *conn) {
 
     // 체결 여부 결정 (거래 코드 뒷자리가 3 또는 7이면 미체결)
     if (order->transaction_code[5] == '3' || order->transaction_code[5] == '7') {
-        printf("미체결 처리\n");
+        printf("미체결 처리. 거래 코드: %s\n", order->transaction_code);
         log_message("INFO", "OrderProcessor", "미체결 주문. 거래 코드: %s", order->transaction_code);
+        
+        // 시세 프로세스에 미체결된 주문 전달
+		send_to_queue( 2, order->stock_code, order-> order_type,  order->price, order->quantity);
+		
         return;
     }
 
@@ -83,7 +88,12 @@ void process_order(int client_socket, fkq_order *order, MYSQL *conn) {
 
     // 응답 전송
     send(client_socket, &execution, sizeof(execution), 0);
+
     log_message("INFO", "OrderProcessor", "거래 체결. 거래 코드: %s", order->transaction_code);
+        
+    // 시세 프로세스에 체결된 주문 정보 전달
+    send_to_queue( 1, execution.stock_code, order-> order_type,  execution.executed_price,order->quantity);
+
     
 }
 
@@ -94,6 +104,9 @@ int main() {
     socklen_t addrlen = sizeof(address);
 
     MYSQL *conn = connect_to_mysql();
+
+    init_message_queue();  // 메시지 큐 초기화
+
     open_log_file();
 
     log_message("NOTICE", "Server", "서버 시작. 포트: %d", PORT);
