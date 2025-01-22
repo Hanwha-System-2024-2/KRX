@@ -1,4 +1,9 @@
-#include "./kmt_messages.h"
+#ifndef KMT_COMMON_H
+#define KMT_COMMON_H
+
+#include "kmt_messages.h"
+#include<mysql/mysql.h>
+
 // 시세 조회
 kmt_current_market_prices getMarketPrice(MYSQL *conn);
 
@@ -10,3 +15,4 @@ int updateMarketPrices();
 
 // 디비 연결
 MYSQL *connect_to_mysql();
+#endif
