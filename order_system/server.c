@@ -92,7 +92,7 @@ void process_order(int client_socket, fkq_order *order, MYSQL *conn) {
     log_message("INFO", "OrderProcessor", "거래 체결. 거래 코드: %s", order->transaction_code);
         
     // 시세 프로세스에 체결된 주문 정보 전달
-    send_to_queue( 1, execution.stock_code, order-> order_type,  execution.executed_price,order->quantity);
+    send_to_queue( 1, order->stock_code, order-> order_type,  execution.executed_price,order->quantity);
 
     
 }
