@@ -1,6 +1,10 @@
 #include "../headers/kft_db_sql.h"
 #include "../headers/kft_common.h"
 
+#define DB_HOST "localhost"
+#define DB_USER "root"
+#define DB_PASS "Hanwha1!"
+#define DB_NAME "hanwha_krx"
 
 
 MYSQL *connect_to_mysql() {

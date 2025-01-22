@@ -3,9 +3,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-#include "../headers/kft_messages.h"
 #include "../headers/kft_common.h"
-#include "../headers/db_sql.h"
+#include "../headers/kft_db_sql.h"
 
 #define PORT 8081
 
