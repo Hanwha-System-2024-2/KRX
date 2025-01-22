@@ -7,8 +7,8 @@ LDFLAGS = -L/usr/lib64/mysql -lmysqlclient
 TARGET = kft_server
 
 # 소스 및 헤더 파일
-SOURCES = server.c db_sql.c common.c
-HEADERS = ../headers/kft_common.h ../headers/kft_db_sql.h ../headers/kft_messages.h
+SOURCES = server.c db_sql.c common.c kft_ipc.c
+HEADERS = ../headers/kft_common.h ../headers/kft_db_sql.h ../headers/kft_messages.h ../headers/kft_ipc.h 
 
 # 오브젝트 파일 생성 규칙
 OBJECTS = $(SOURCES:.c=.o)
