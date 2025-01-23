@@ -44,7 +44,7 @@ void send_order_to_queue(int message_queue_id, fkq_order *msg) {
     }
     
     
-    if (msgsnd(message_queue_id, &msg, sizeof(msg), IPC_NOWAIT) == -1) {
+    if (msgsnd(message_queue_id, msg, sizeof(*msg), IPC_NOWAIT) == -1) {
         perror("msgsnd() 실패");
         log_message("ERROR", "MessageQueue", "msgsnd() 실패");
     } else {
@@ -59,7 +59,7 @@ void send_execution_to_queue(int message_queue_id, kft_execution *msg) {
         return;
     }
     
-    if (msgsnd(message_queue_id, &msg, sizeof(msg), IPC_NOWAIT) == -1) {
+    if (msgsnd(message_queue_id, msg, sizeof(*msg), IPC_NOWAIT) == -1) {
         perror("msgsnd() 실패");
         log_message("ERROR", "MessageQueue", "msgsnd() 실패");
     } else {

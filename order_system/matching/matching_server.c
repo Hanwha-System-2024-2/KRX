@@ -4,7 +4,6 @@
 
 #include "../../headers/kft_log.h"
 #include "../../headers/kft_ipc.h"
-#include "../../headers/kft_db_sql.h"
 
 
 #include <sys/types.h>

@@ -101,7 +101,7 @@ int main() {
 
                 send(client_socket, &response, sizeof(response), 0);
 
-                continue;
+                break;
             }
             // 길이 검증
             if (order.header.length != sizeof(fkq_order)) {
@@ -117,7 +117,7 @@ int main() {
                 strcpy(response.reject_code, "E001");
 
                 send(client_socket, &response, sizeof(response), 0);
-                continue;
+                break;
             }
             printf("주문 요청 수신 - 종목: %s %s, 거래코드: %s, 유저: %s, 유형: %c, 수량: %d, 시간: %s, 지정가: %d, 원주문번호: %s\n",
                 order.stock_code, order.stock_name, order.transaction_code, order.user_id, order.order_type, order.quantity, order.order_time, order.price, order.original_order);
