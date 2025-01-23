@@ -1,4 +1,4 @@
-#include "kft_common.h"
+#include "../headers/kft_log.h"
 #include <time.h>
 
 FILE *log_file = NULL;

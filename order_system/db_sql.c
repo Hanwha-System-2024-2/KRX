@@ -1,5 +1,5 @@
 #include "../headers/kft_db_sql.h"
-#include "../headers/kft_common.h"
+#include "../headers/kft_log.h"
 
 #define DB_HOST "localhost"
 #define DB_USER "root"

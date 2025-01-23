@@ -3,7 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-#include "../headers/kft_common.h"
+#include "../headers/kft_log.h"
 #include "../headers/kft_db_sql.h"
 #include "../headers/kft_ipc.h"
 
