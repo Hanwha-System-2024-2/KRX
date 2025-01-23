@@ -11,3 +11,4 @@ void log_message(const char *level, const char *module, const char *format, ...)
 
 // 시간 포맷 함수
 void get_timestamp(char *timestamp);
+

@@ -64,6 +64,6 @@ void send_execution_to_queue(int message_queue_id, kft_execution *msg) {
         log_message("ERROR", "MessageQueue", "msgsnd() 실패");
     } else {
         printf("msgsnd() 성공: %s, 가격 %d\n", msg->transaction_code, msg->executed_price);
-        log_message("NOTICE", "MessageQueue","msgsnd() 성공: %s, 가격 %d\n", msg->stock_name, msg->executed_price);
+        log_message("NOTICE", "MessageQueue","msgsnd() 성공: %s, 가격 %d\n", msg->transaction_code, msg->executed_price);
     }
 }
