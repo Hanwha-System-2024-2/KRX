@@ -28,11 +28,8 @@ typedef struct  {
 
 int send_data(int client_socket, MYSQL* conn) {
     kmt_current_market_prices data;
-
-    // 데이터 초기화
-    data.header.tr_id=8;
-    data.header.length = sizeof(data.body);
-     
+    memset(&data, 0, sizeof(data));
+	
     // DB에서 시세 데이터 가져오기
     data=getMarketPrice(conn);    
 
@@ -43,12 +40,6 @@ int send_data(int client_socket, MYSQL* conn) {
         return 1;
     }
 
-    // 종료 신호 전송
-    char end_signal = '\n';
-    if (send(client_socket, &end_signal, sizeof(end_signal), 0) < 0) {
-        perror("Failed to send end signal");
-        return 1;
-    }
     return 0;
 }
 
@@ -81,8 +72,6 @@ int main() {
     // MYSQL 디비 연결하기 
 
     MYSQL* conn=connect_to_mysql();
-
-
 
     // SO_REUSEADDR 설정
     int opt = 1;
@@ -117,21 +106,32 @@ int main() {
     int send_result=0;
     while (1) {
 	if(send_result==1) break;
-	////// 메세지 큐 받기
-	if (msgrcv(key_id, &msg, sizeof(msg), 1, IPC_NOWAIT) != -1) { // Receive if msgtype is 1
+	//============== 메세지 큐 받기 ================
+	// 체결 메시지
+	if (msgrcv(key_id, &msg, sizeof(msg), 1, IPC_NOWAIT) != -1) {
+	    // 체결 메시지 받으면								 
+	    // 시세 업데이트하고  db 업데이트하기
+	    int update_result = updateMarketPrices(conn, &msg, 1); 
 
-	    // 체결 메시지 받으면 db 업데이트하기
-	    int update_result = updateMarketPrices(conn, msg); 
-	    // 
 	    if (update_result==0) {
-	    	printf("update failed\n");
+	    	printf("[NO UPDATE MESSAGE 1]\n");
 	    }
-
+        else {
+            printf("[UPDATED MESSAGE 1]\n");
         }
-	//printf("stock_code: %s\n", msg.stock_code);
-        //printf("order type : %d\n", msg.order_type);
-        //printf("price : %d\n", msg.price);
-	/////
+
+    }
+	// 미체결 메시지
+	if(msgrcv(key_id, &msg, sizeof(msg), 2, IPC_NOWAIT) != -1) {
+		int update_result = updateMarketPrices(conn, &msg, 2);
+		if (update_result==0) {
+			printf("[NO UPDATE MESSAGE 2]\n");
+		}
+        else {
+            printf("[UPDATED MESSAGE 2]\n");
+        }
+	}
+	// =============================================
         send_result=send_data(client_socket, conn);
         sleep(5); // 5초마다 데이터 전송
     }

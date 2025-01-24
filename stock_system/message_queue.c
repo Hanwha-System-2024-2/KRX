@@ -29,7 +29,7 @@ int main() {
 
     while (1) {
         // 메시지 초기화
-        msg.msgtype = 1;  // 메시지 유형
+        msg.msgtype = 2;  // 메시지 유형
         printf("Enter stock code (6 characters): ");
         scanf("%6s", msg.stock_code);
 
@@ -43,7 +43,7 @@ int main() {
         scanf("%d", &msg.quantity);
 
         // 메시지 전송
-        if (msgsnd(key_id, &msg, sizeof(msg) - sizeof(long), 0) == -1) {
+        if (msgsnd(key_id, &msg, sizeof(msg)-sizeof(long), 0) == -1) {
             perror("Message Send Failed");
             exit(1);
         }
