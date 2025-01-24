@@ -4,11 +4,12 @@ CFLAGS = -Wall -Wextra -g -I../headers
 LDFLAGS = -L/usr/lib64/mysql -lmysqlclient
 
 # 실행 파일 이름
-TARGET = kft_server
+TARGET = kft_matching_server
 
 # 소스 및 헤더 파일
-SOURCES = server.c db_sql.c kft_log.c kft_ipc.c
-HEADERS = ../headers/kft_log.h ../headers/kft_db_sql.h ../headers/kft_messages.h ../headers/kft_ipc.h 
+SOURCES = matching_server.c ../db_sql.c ../kft_log.c ../kft_ipc.c
+HEADERS = ../../headers/kft_log.h ../../headers/kft_ipc.h ../../headers/kft_db_sql.h ../../headers/kft_messages.h
+
 
 # 오브젝트 파일 생성 규칙
 OBJECTS = $(SOURCES:.c=.o)
@@ -30,24 +31,3 @@ clean:
 
 # 재빌드 규칙
 rebuild: clean all
-
-
-SRCDIR = order_system
-HDRDIR = headers
-OBJDIR = build
-
-
-
-$(TARGET): $(OBJ)
-	$(CC) -o $@ $^ $(LDFLAGS)
-
-$(OBJDIR)/%.o: $(SRCDIR)/%.c | $(OBJDIR)
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJDIR):
-	mkdir -p $(OBJDIR)
-
-clean:
-	rm -rf $(OBJDIR) $(TARGET)
-
-.PHONY: all clean

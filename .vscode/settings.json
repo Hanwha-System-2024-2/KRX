@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "kft_ipc.h": "c",
+        "kft_log.h": "c",
+        "kft_db_sql.h": "c"
+    }
+}
