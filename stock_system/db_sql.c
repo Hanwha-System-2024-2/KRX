@@ -63,7 +63,7 @@ kmt_current_market_prices getMarketPrice(MYSQL *conn) {
 	if (result == NULL) {
         	finish_with_error(conn);
     	}
-
+	
 	
 	kmt_current_market_prices data;
 	// 헤더 부여 : 시세 ID 8
