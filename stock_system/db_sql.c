@@ -3,6 +3,7 @@
 #include<string.h>
 #include<time.h>
 #include<memory.h>
+#include<syslog.h>
 #include "/usr/include/mysql/mysql.h"
 #include "../headers/kmt_common.h"
 #include "../headers/kmt_messages.h"
@@ -253,10 +254,17 @@ int updateMarketPrices(MYSQL *conn, msgbuf* msg, int type) { //type 1: 체결, t
 
 	// free sql result 
 	mysql_free_result(sql_result);
-	// 업데이트 확인
-	printf("[STOCK_CODE: %s UPDATED]\n", msg->stock_code);
-	// 로그찍기
-	// 함수 구현
+
+
+	// 업데이트 확인 로그찍기
+	printf("[LOG] Stock Code: %s, Price: %d, Quantity: %d, Fluctuation Rate: %s, Time: %s\n", 
+        msg->stock_code, msg->price, msg->quantity, fluctuation_rate, market_time);
+	// syslog로 로그 남기기
+	// syslog 초기화
+    openlog("MarketPriceUpdater", LOG_PID | LOG_CONS, LOG_USER);
+    syslog(LOG_INFO, "Stock Code: %s, Price: %d, Quantity: %d, Fluctuation Rate: %s, Time: %s",
+           msg->stock_code, msg->price, msg->quantity, fluctuation_rate, market_time);
+	closelog(); // syslog 종료
 	
 
 	return result;

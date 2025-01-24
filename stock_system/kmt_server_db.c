@@ -9,6 +9,9 @@
 #include <mysql/mysql.h>
 
 #define PORT 8080
+#ifndef SIGTERM
+#define SIGTERM 15
+#endif
 
 // for Message queue
 #include <sys/types.h>
@@ -48,7 +51,7 @@ int main() {
     int server_fd, client_socket;
     struct sockaddr_in server_addr, client_addr;
 
-    ////// 메세지 큐 연결
+    //============ 메세지 큐 연결 =============
     int key_id;
     msgbuf msg;
     msg.msgtype = 1;
@@ -58,7 +61,7 @@ int main() {
         exit(0);
     }
 
-    ///////////
+    //=====================================
 
 
     socklen_t addr_len = sizeof(client_addr);
@@ -103,42 +106,52 @@ int main() {
     }
 
     printf("Client connected\n");
-    int send_result=0;
-    while (1) {
-	if(send_result==1) break;
-	//============== 메세지 큐 받기 ================
-	// 체결 메시지
-	if (msgrcv(key_id, &msg, sizeof(msg), 1, IPC_NOWAIT) != -1) {
-	    // 체결 메시지 받으면								 
-	    // 시세 업데이트하고  db 업데이트하기
-	    int update_result = updateMarketPrices(conn, &msg, 1); 
-
-	    if (update_result==0) {
-	    	printf("[NO UPDATE MESSAGE 1]\n");
-	    }
-        else {
-            printf("[UPDATED MESSAGE 1]\n");
-        }
-
-    }
-	// 미체결 메시지
-	if(msgrcv(key_id, &msg, sizeof(msg), 2, IPC_NOWAIT) != -1) {
-		int update_result = updateMarketPrices(conn, &msg, 2);
-		if (update_result==0) {
-			printf("[NO UPDATE MESSAGE 2]\n");
-		}
-        else {
-            printf("[UPDATED MESSAGE 2]\n");
-        }
-	}
-	// =============================================
-        send_result=send_data(client_socket, conn);
-        sleep(5); // 5초마다 데이터 전송
+    
+    // ========== 자식 프로세스 생성 ===============
+    pid_t pid= fork();
+    if(pid<0) {
+        perror("Fork Failed");
+        exit(EXIT_FAILURE);
     }
 
-    close(client_socket);
-    close(server_fd);
+    if(pid==0) {
+        // 자식 프로세스: 메시지 큐 처리
+        while (1) {
+            // 체결 메시지
+            if (msgrcv(key_id, &msg, sizeof(msg), 1, IPC_NOWAIT) != -1) {
+                int update_result = updateMarketPrices(conn, &msg, 1);
+                if (update_result == 0) {
+                    printf("[NO UPDATE MESSAGE 1]\n");
+                } else {
+                    printf("[UPDATED MESSAGE 1]\n");
+                }
+            }
+            // 미체결 메시지
+            if (msgrcv(key_id, &msg, sizeof(msg), 2, IPC_NOWAIT) != -1) {
+                int update_result = updateMarketPrices(conn, &msg, 2);
+                if (update_result == 0) {
+                    printf("[NO UPDATE MESSAGE 2]\n");
+                } else {
+                    printf("[UPDATED MESSAGE 2]\n");
+                }
+            }
+            sleep(1); // 메시지 큐 체크 주기
+        }
 
+    } else {
+        // 부모 프로세스: 클라이언트와 데이터 송수신 처리
+        int send_result = 0;
+        while (1) {
+            if (send_result == 1) break;
+            send_result = send_data(client_socket, conn);
+            sleep(5); // 5초마다 데이터 전송
+        }
+        close(client_socket);
+        close(server_fd);
+
+        // 자식 프로세스 종료 대기
+        kill(pid, SIGTERM);
+    }
 
     // free MYSQL conn 해주기
     mysql_close(conn);
