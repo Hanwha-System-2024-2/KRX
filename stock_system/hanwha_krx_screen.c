@@ -3,6 +3,7 @@
 #include <locale.h>
 #include <mysql/mysql.h>
 #include <wchar.h>
+#include <sys/select.h>
 #include <unistd.h>
 #include "../headers/kmt_common.h"
 #include "../headers/kmt_messages.h"
@@ -20,33 +21,49 @@ void print_aligned(int y, int x, const char *stock_code, const char *stock_name,
 }
 
 void display_market_price(MYSQL* conn) {
+    struct timeval timeout; // select() 대기 시간 설정
     int ch;
-    int refresh_rate = 1000000; // 1초 (마이크로초 단위)
-    while(1) {
+    int refresh_rate = 1; // 새로고침 주기 (초 단위)
 
+    while (1) {
+        clear(); // 화면 초기화
+
+        // DB에서 시세 정보 가져오기
+        kmt_current_market_prices data = getMarketPrice(conn);
+
+        // 시세 정보 출력
+        mvprintw(1, 2, "시세 정보:");
+        mvprintw(2, 2, "------------------------------------------------");
+        mvprintw(3, 2, "%-10s %-15s %-10s %-10s", "종목코드", "종목명", "현재가", "거래량");
+        mvprintw(4, 2, "------------------------------------------------");
+
+        for (int i = 0; i < 4; i++) { // 최대 4개의 데이터 출력
+            if (data.body[i].stock_code[0] == '\0') break; // 데이터 끝 확인
+            mvprintw(5 + i, 2, "%-10s %-15s %-10d %-10d",
+                     data.body[i].stock_code, data.body[i].stock_name,
+                     data.body[i].price, data.body[i].volume);
+        }
+
+        mvprintw(16, 2, "1초마다 데이터가 새로고침됩니다. 종료하려면 'q'를 누르세요.");
+        refresh();
+
+        // 입력 대기 (select를 사용하여 효율적으로 처리)
+        timeout.tv_sec = refresh_rate; // 초 단위
+        timeout.tv_usec = 0; // 마이크로초 단위
+        fd_set fds;
+        FD_ZERO(&fds);
+        FD_SET(STDIN_FILENO, &fds);
+
+        // 입력 또는 타임아웃 대기
+        int ret = select(STDIN_FILENO + 1, &fds, NULL, NULL, &timeout);
+
+        if (ret > 0) {
+            ch = getch();
+            if (ch == 'q' || ch == 'Q') {
+                break; // 루프 종료
+            }
+        }
     }
-    clear(); // 화면 초기화
-
-    // DB에서 시세 정보 가져오기
-    kmt_current_market_prices data = getMarketPrice(conn);
-
-    // 출력
-    mvprintw(1, 2, "시세 정보:");
-    mvprintw(2, 2, "------------------------------------------------");
-    mvprintw(3, 2, "%-10s %-15s %-10s %-10s", "종목코드", "종목명", "현재가", "거래량");
-    mvprintw(4, 2, "------------------------------------------------");
-
-    // 시세 정보를 테이블 형식으로 출력
-    for (int i = 0; i < 10; i++) { // 최대 10개의 데이터 출력
-        if (data.body[i].stock_code[0] == '\0') break; // 데이터 끝 확인
-
-        print_aligned(5 + i, 2, data.body[i].stock_code, data.body[i].stock_name, 
-                      data.body[i].price, data.body[i].volume);
-    }
-
-    mvprintw(16, 2, "아무 키나 눌러 메뉴로 돌아갑니다...");
-    refresh();
-    getch(); // 사용자 입력 대기
 }
 
 
