@@ -4,19 +4,18 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <time.h>
-#include "../headers/kmt_common.h"
-#include "../headers/kmt_messages.h"
 #include <mysql/mysql.h>
-
-#define PORT 8080
-#ifndef SIGTERM
-#define SIGTERM 15
-#endif
-
-// for Message queue
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
+#include "../headers/kmt_common.h"
+#include "../headers/kmt_messages.h"
+
+#define PORT 8080
+#define QUEUE_KEY 1234
+#ifndef SIGTERM
+#define SIGTERM 15
+#endif
 
 
 typedef struct  {
@@ -27,7 +26,14 @@ typedef struct  {
     int quantity; // 체결 수량
 } msgbuf;
 
-
+typedef struct  {
+    long msgtype; // 1: 체결  2: 미체결 
+    char stock_code[7];  // 종목 코드
+    char order_type;     // 'B' (매수) or 'S' (매도)
+    int price;  // 체결 가격
+    int quantity; // 체결 수량
+    char time[19]; // 체결 시간
+} msgbuf_info;
 
 int send_data(int client_socket, MYSQL* conn) {
     kmt_current_market_prices data;
@@ -52,14 +58,17 @@ int main() {
     struct sockaddr_in server_addr, client_addr;
 
     //============ 메세지 큐 연결 =============
-    int key_id;
+    int original_key_id;
     msgbuf msg;
+    msgbuf_info msg_info;
     msg.msgtype = 1;
-    key_id = msgget((key_t) 1234, IPC_CREAT|0666); // Create Message (message queue key, message flag)
-    if (key_id == -1) {
+    msg_info.msgtype=1;
+    original_key_id = msgget((key_t) QUEUE_KEY, IPC_CREAT|0666);
+    if (original_key_id == -1) {
         printf("Message Get Failed!\n");
         exit(0);
     }
+
 
     //=====================================
 
@@ -92,20 +101,6 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    if (listen(server_fd, 3) < 0) {
-        perror("Listen failed");
-        exit(EXIT_FAILURE);
-    }
-
-    printf("Waiting for connections...\n");
-
-    client_socket = accept(server_fd, (struct sockaddr *)&client_addr, &addr_len);
-    if (client_socket < 0) {
-        perror("Accept failed");
-        exit(EXIT_FAILURE);
-    }
-
-    printf("Client connected\n");
     
     // ========== 자식 프로세스 생성 ===============
     pid_t pid= fork();
@@ -118,7 +113,9 @@ int main() {
         // 자식 프로세스: 메시지 큐 처리
         while (1) {
             // 체결 메시지
-            if (msgrcv(key_id, &msg, sizeof(msg), 1, IPC_NOWAIT) != -1) {
+            if (msgrcv(original_key_id, &msg, sizeof(msg), 1, IPC_NOWAIT) != -1) {
+                
+                // 시세 업데이트
                 int update_result = updateMarketPrices(conn, &msg, 1);
                 if (update_result == 0) {
                     printf("[NO UPDATE MESSAGE 1]\n");
@@ -127,7 +124,7 @@ int main() {
                 }
             }
             // 미체결 메시지
-            if (msgrcv(key_id, &msg, sizeof(msg), 2, IPC_NOWAIT) != -1) {
+            if (msgrcv(original_key_id, &msg, sizeof(msg), 2, IPC_NOWAIT) != -1) {
                 int update_result = updateMarketPrices(conn, &msg, 2);
                 if (update_result == 0) {
                     printf("[NO UPDATE MESSAGE 2]\n");
@@ -139,6 +136,24 @@ int main() {
         }
 
     } else {
+
+        // 소켓 연결
+        if (listen(server_fd, 3) < 0) {
+            perror("Listen failed");
+            exit(EXIT_FAILURE);
+        }
+
+        printf("Waiting for connections...\n");
+
+        client_socket = accept(server_fd, (struct sockaddr *)&client_addr, &addr_len);
+        if (client_socket < 0) {
+            perror("Accept failed");
+            exit(EXIT_FAILURE);
+        }
+
+        printf("Client connected\n");
+        
+
         // 부모 프로세스: 클라이언트와 데이터 송수신 처리
         int send_result = 0;
         while (1) {

@@ -4,9 +4,28 @@
 #include <mysql/mysql.h>
 #include <wchar.h>
 #include <sys/select.h>
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
 #include <unistd.h>
+#include <string.h>
 #include "../headers/kmt_common.h"
 #include "../headers/kmt_messages.h"
+#define MAX_MSG_SIZE 512
+#define QUEUE_KEY 5678
+#define LOG_FILE "/home/ec2-user/KRX/log/update_market_price.log"
+
+
+// 메시지 구조체 정의
+typedef struct {
+    long msgtype; // 메시지 유형
+    char stock_code[7];
+    char order_type;
+    int price;
+    int quantity;
+} msgbuf;
+
+
 
 // 문자열을 정렬된 형태로 출력
 void print_aligned(int y, int x, const char *stock_code, const char *stock_name, int price, int volume) {
@@ -19,7 +38,7 @@ void print_aligned(int y, int x, const char *stock_code, const char *stock_name,
 
     mvprintw(y, x + 30, "%-10d %-10d", price, volume); // 가격과 거래량
 }
-
+// 1. 시세 정보 출력
 void display_market_price(MYSQL* conn) {
     struct timeval timeout; // select() 대기 시간 설정
     int ch;
@@ -34,7 +53,7 @@ void display_market_price(MYSQL* conn) {
         // 시세 정보 출력
         mvprintw(1, 2, "시세 정보:");
         mvprintw(2, 2, "------------------------------------------------");
-        mvprintw(3, 2, "%-10s %-15s %-10s %-10s", "종목코드", "종목명", "현재가", "거래량");
+        mvprintw(3, 3, "%-10s %-15s %-10s %-10s", "종목코드", "종목명", "현재가", "거래량");
         mvprintw(4, 2, "------------------------------------------------");
 
         for (int i = 0; i < 4; i++) { // 최대 4개의 데이터 출력
@@ -66,13 +85,103 @@ void display_market_price(MYSQL* conn) {
     }
 }
 
+// 2. 체결내역 출력
+void display_execution() {
+    FILE *log_file = fopen(LOG_FILE, "r");
+    if (!log_file) {
+        mvprintw(1, 2, "로그 파일을 열 수 없습니다.");
+        refresh();
+        getch();
+        return;
+    }
+
+    char stored_lines[100][1024]; // 최대 100개의 로그를 저장
+    int line_count = 0; // 저장된 로그 개수
+    long last_pos = 0; // 마지막으로 읽은 파일 위치
+    int refresh_rate = 1; // 새로고침 주기 (초 단위)
+
+    while (1) {
+        log_file = fopen(LOG_FILE, "r");
+        if (!log_file) {
+            mvprintw(1, 2, "로그 파일을 열 수 없습니다.");
+            refresh();
+            getch();
+            return;
+        }
+
+        fseek(log_file, last_pos, SEEK_SET); // 마지막으로 읽은 위치로 이동
+
+        char line[1024];
+        while (fgets(line, sizeof(line), log_file)) {
+            if (strstr(line, "[MarketPriceUpdater]")) { // 로그 필터링
+                if (line_count < 100) { // 최대 100개까지만 저장
+                    strcpy(stored_lines[line_count++], line);
+                } else {
+                    // 저장된 로그가 100개를 초과하면 오래된 로그를 삭제하고 추가
+                    for (int i = 1; i < 100; i++) {
+                        strcpy(stored_lines[i - 1], stored_lines[i]);
+                    }
+                    strcpy(stored_lines[99], line);
+                }
+            }
+        }
+
+        last_pos = ftell(log_file); // 파일의 현재 위치 저장
+        fclose(log_file);
+
+        // 화면 갱신
+        clear();
+        mvprintw(1, 2, "체결 내역 (최대 100개)");
+        mvprintw(2, 2, "-------------------------------------------------------------");
+        mvprintw(3, 5, "%-15s %-10s %-10s %-10s %-20s", "Stock Code", "Price", "Quantity", "Fluctuation", "Time");
+        mvprintw(4, 2, "-------------------------------------------------------------");
+
+        int row = 5;
+        for (int i = 0; i < line_count; i++) {
+            char stock_code[7], fluctuation_rate[11], market_time[19];
+            int price, quantity;
+
+            // 저장된 로그 파싱
+            if (sscanf(stored_lines[i],
+                       "[MarketPriceUpdater] Stock Code: %6s, Price: %d, Quantity: %d, Fluctuation Rate: %10[^,], Time: %14s",
+                       stock_code, &price, &quantity, fluctuation_rate, market_time) == 5) {
+                mvprintw(row++, 2, "%-15s %-10d %-10d %-15s %-15s",
+                         stock_code, price, quantity, fluctuation_rate, market_time);
+            } else {
+                mvprintw(row++, 2, "파싱 실패: %s", stored_lines[i]);
+            }
+        }
+
+        mvprintw(row + 2, 2, "실시간으로 업데이트됩니다. 종료하려면 'q'를 누르세요.");
+        refresh();
+
+        // 입력 대기 및 새로고침 대기
+        struct timeval timeout;
+        timeout.tv_sec = refresh_rate; // 초 단위
+        timeout.tv_usec = 0; // 마이크로초 단위
+
+        fd_set fds;
+        FD_ZERO(&fds);
+        FD_SET(STDIN_FILENO, &fds);
+
+        int ret = select(STDIN_FILENO + 1, &fds, NULL, NULL, &timeout);
+        if (ret > 0) {
+            int ch = getch();
+            if (ch == 'q' || ch == 'Q') {
+                break; // 루프 종료
+            }
+        }
+    }
+}
+
+
 
 void display_menu(int highlight) {
     // 메뉴 항목
     char *choices[] = {
         "1. 시세 정보 확인",
-        "2. 주문 정보 확인",
-        "3. 체결 정보 확인",
+        "2. 체결 정보 확인",
+        "3. 주문 정보 확인",
         "4. 종료"
     };
     int n_choices = sizeof(choices) / sizeof(choices[0]);
@@ -133,6 +242,8 @@ int main() {
                 } else if (choice == 1) {
                     // 시세 정보 출력
                     display_market_price(conn);
+                } else if(choice==2)  {
+                    display_execution();
                 } else {
                     clear();
                     mvprintw(5, 5, "선택한 메뉴: %d (기능 미구현)", choice);

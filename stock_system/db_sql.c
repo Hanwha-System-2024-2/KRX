@@ -261,10 +261,17 @@ int updateMarketPrices(MYSQL *conn, msgbuf* msg, int type) { //type 1: 체결, t
         msg->stock_code, msg->price, msg->quantity, fluctuation_rate, market_time);
 	// syslog로 로그 남기기
 	// syslog 초기화
-    openlog("MarketPriceUpdater", LOG_PID | LOG_CONS, LOG_USER);
+    openlog("MarketPriceUpdater", LOG_PID | LOG_CONS | LOG_NDELAY, LOG_USER);
     syslog(LOG_INFO, "Stock Code: %s, Price: %d, Quantity: %d, Fluctuation Rate: %s, Time: %s",
            msg->stock_code, msg->price, msg->quantity, fluctuation_rate, market_time);
 	closelog(); // syslog 종료
+	// 파일에 직접 기록
+	FILE *log_file = fopen("/home/ec2-user/KRX/log/update_market_price.log", "a");
+	if (log_file) {
+		fprintf(log_file, "[MarketPriceUpdater] Stock Code: %s, Price: %d, Quantity: %d, Fluctuation Rate: %s, Time: %s\n",
+				msg->stock_code, msg->price, msg->quantity, fluctuation_rate, market_time);
+		fclose(log_file);
+	}
 	
 
 	return result;
