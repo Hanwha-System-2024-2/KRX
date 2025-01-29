@@ -29,6 +29,7 @@ void finish_with_error(MYSQL *con) {
 }
 
 
+
 void format_current_time(char *buffer) {
     time_t now = time(NULL);
     struct tm *t = localtime(&now);
@@ -52,6 +53,32 @@ MYSQL *connect_to_mysql() {
     printf("MySQL 연결 성공!\n");
     return conn;  // 연결 객체 반환
 }
+
+int getClosingPriceByStockCode(MYSQL* conn, char* stock_code) {
+	int closing_price=0;
+	char query[512];
+	// 전일 종가 불러오기
+	snprintf(query, sizeof(query), 
+		"select closing_price from market_prices "
+		"where stock_code= %s",
+		stock_code
+	);
+	if(mysql_query(conn, query)) {
+		finish_with_error(conn);
+	}
+	MYSQL_RES *sql_result = mysql_store_result(conn);
+	if(sql_result==NULL) {
+		finish_with_error(conn);
+	}
+
+	MYSQL_ROW row;
+	while((row=mysql_fetch_row(sql_result))) {		
+		closing_price = atoi(row[0]);
+			
+	}
+	return closing_price;
+}
+
 
 kmt_current_market_prices getMarketPrice(MYSQL *conn) {
 	if(mysql_query(conn, "select * from market_prices m join stock_info s on m.stock_code=s.stock_code")){
@@ -117,7 +144,7 @@ kmt_stock_infos getStockInfo(MYSQL *conn) {
 	}
 	// 헤더 부여 : 종목 정보 헤더 ID : 7
 	kmt_stock_infos data;
-	data.header.tr_id=7;
+	data.header.tr_id=14;
 	data.header.length=sizeof(data);
 	
 
@@ -132,6 +159,48 @@ kmt_stock_infos getStockInfo(MYSQL *conn) {
 	mysql_free_result(result);
 	return data;
 }
+
+
+void updateMarketPricesAuto(MYSQL* conn) {
+	msgbuf hanwha;
+	msgbuf samsung;
+	hanwha.msgtype=1;
+	samsung.msgtype=1;
+	strcpy(hanwha.stock_code, "272210");
+	strcpy(samsung.stock_code, "005930");
+
+	// 매수/매도
+	if(rand()%2==1) {
+		hanwha.order_type='B';
+		samsung.order_type='B';
+	} else {
+		hanwha.order_type='S';
+		samsung.order_type='S';
+	}
+
+	// 가격 결정
+	hanwha.price=getClosingPriceByStockCode(conn, hanwha.stock_code);
+	samsung.price=getClosingPriceByStockCode(conn, samsung.stock_code);
+
+	int change_hanwha = rand() % (int)((float)hanwha.price * 0.3) + 1;
+	int change_samsung = rand() % (int)((float)samsung.price * 0.3) + 1;
+
+	if (rand() % 10 < 8) { // 80% 확률
+		hanwha.price = (hanwha.price + change_hanwha) > 0 ? hanwha.price + change_hanwha : hanwha.price;
+		samsung.price = (samsung.price - change_samsung) > 0 ? samsung.price - change_samsung : samsung.price;
+	} else { // 20% 확률
+		hanwha.price = (hanwha.price - change_hanwha) > 0 ? hanwha.price - change_hanwha : hanwha.price;
+		samsung.price = (samsung.price + change_samsung) > 0 ? samsung.price + change_samsung : samsung.price;
+	}
+	
+	// 수량
+	hanwha.quantity=rand()%100+1;
+	samsung.quantity=rand()%100+1;
+	
+	updateMarketPrices(conn, &hanwha, 2);
+	updateMarketPrices(conn, &samsung, 2);
+}
+
 
 int updateMarketPrices(MYSQL *conn, msgbuf* msg, int type) { //type 1: 체결, type 2: 미체결
 	int result=1;
@@ -156,7 +225,6 @@ int updateMarketPrices(MYSQL *conn, msgbuf* msg, int type) { //type 1: 체결, t
 	}
 
 	MYSQL_ROW row;
-	// 종목 코드 없는 경우 예외처리
 	int existFlag=1;
 	while((row=mysql_fetch_row(sql_result))) {
 		
@@ -176,16 +244,16 @@ int updateMarketPrices(MYSQL *conn, msgbuf* msg, int type) { //type 1: 체결, t
 	// 고가, 저가 갱신
 	if(msg->price > highest_price) {
 		snprintf(query, sizeof(query), 
-		"UPDATE market_prices"
-		"SET high_price = %d"
+		"UPDATE market_prices "
+		"SET high_price = %d "
 		"WHERE stock_code = '%s'",
 		highest_price, msg->stock_code);
 	}
 
 	else if(msg->price < lowest_price) {
 		snprintf(query, sizeof(query),
-		"UPDATE market_prices"
-		"SET low_price = %d"
+		"UPDATE market_prices "
+		"SET low_price = %d "
 		"WHERE stock_code = '%s'",		
 		lowest_price, msg->stock_code);
 	}	
@@ -277,10 +345,3 @@ int updateMarketPrices(MYSQL *conn, msgbuf* msg, int type) { //type 1: 체결, t
 
 	return result;
 }
-
-
-
-
-
-
-

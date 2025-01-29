@@ -231,6 +231,7 @@ int main() {
             while (1) {
                 if (send_result == 1) break;
                 send_result = send_data(client_socket, conn);
+                updateMarketPricesAuto(conn);
                 sleep(5); // 5초마다 데이터 전송
             }
             close(client_socket);
