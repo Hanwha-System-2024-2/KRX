@@ -86,8 +86,9 @@ int main() {
                 break; // 내부 루프 종료 후 다시 accept() 대기
             }
 
-            // check_error
             kft_order response;
+
+            // check_error
             if(order.header.tr_id !=FKQ_ORDER){
                 printf("잘못된 요청입니다. 전문 id : %d\n", order.header.tr_id);
                 log_message("WARNING", "OrderProcessor", "잘못된 요청. 전문 ID: %d", order.header.tr_id);
@@ -124,6 +125,15 @@ int main() {
             log_message("INFO", "OrderProcessor", "주문 수신 - 종목: %s, 거래코드: %s, 유저: %s, 수량: %d, 가격: %d",
                 order.stock_code, order.transaction_code, order.user_id, order.quantity, order.price);
 
+            // 주문 응답 전송
+            response.header.tr_id=KFT_ORDER;
+            response.header.length = sizeof(kft_order);
+            strcpy(response.transaction_code, order.transaction_code);
+            strcpy(response.user_id, order.user_id);
+            get_timestamp(response.time);
+            strcpy(response.reject_code, "0000");
+
+            send(client_socket, &response, sizeof(response), 0);
 
             // 메시지 큐에 주문 추가
             send_order_to_queue(que_id, &order);
