@@ -8,6 +8,8 @@
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
+#include <sys/select.h>
+#include <errno.h>
 #include "../headers/kmt_common.h"
 #include "../headers/kmt_messages.h"
 
@@ -52,6 +54,66 @@ int send_data(int client_socket, MYSQL* conn) {
     return 0;
 }
 
+int recv_data(int client_socket, MYSQL* conn) {
+    fd_set read_fds;
+    struct timeval timeout;
+    char buffer[1024];
+    
+    // init 
+    memset(buffer, 0, sizeof(buffer));
+    FD_ZERO(&read_fds);
+    FD_SET(client_socket, &read_fds);
+
+    timeout.tv_sec=5;
+    timeout.tv_usec=0;
+
+
+    int activity = select(client_socket + 1, &read_fds, NULL, NULL, &timeout);
+    if (activity < 0) {
+        perror("select failed");
+        return 1;
+    } else if (activity == 0) {
+        printf("Waiting for login signal...\n");
+        return 0;
+    }
+
+    // 클라이언트 데이터 수신
+    memset(buffer, 0, sizeof(buffer));
+    int bytes_received = recv(client_socket, buffer, sizeof(buffer), 0);
+    if (bytes_received < 0) {
+        perror("recv failed");
+        return 1;
+    } else if (bytes_received == 0) {
+        printf("Client disconnected\n");
+        return 1;
+    }
+
+    // 수신한 데이터 처리
+    // printf("Received: %s\n", buffer);
+    
+    
+    // DB에서 종목 데이터 가져오기
+    kmt_stock_infos data;
+    memset(&data, 0, sizeof(data));
+    data=getStockInfo(conn);
+    
+    // 데이터 전송
+    if (send(client_socket, &data, sizeof(data), 0) < 0) {
+        perror("Failed to send data");
+        return 1;
+    }
+    
+    return 0; // 성공적으로 데이터 수신
+}
+
+void handle_client_recv(int client_socket, MYSQL* conn) {
+    while (1) {
+        int recv_result = recv_data(client_socket, conn);
+        if (recv_result == 1) break; // 클라이언트 종료 시 루프 종료
+    }
+    close(client_socket);
+    exit(0);  // 자식 프로세스 종료
+}
 
 int main() {
     int server_fd, client_socket;
@@ -103,13 +165,13 @@ int main() {
 
     
     // ========== 자식 프로세스 생성 ===============
-    pid_t pid= fork();
-    if(pid<0) {
+    pid_t msg_queue_pid= fork();
+    if(msg_queue_pid<0) {
         perror("Fork Failed");
         exit(EXIT_FAILURE);
     }
 
-    if(pid==0) {
+    if(msg_queue_pid==0) {
         // 자식 프로세스: 메시지 큐 처리
         while (1) {
             // 체결 메시지
@@ -135,14 +197,13 @@ int main() {
             sleep(1); // 메시지 큐 체크 주기
         }
 
-    } else {
+    } else { // TCP 통신
 
         // 소켓 연결
         if (listen(server_fd, 3) < 0) {
             perror("Listen failed");
             exit(EXIT_FAILURE);
-        }
-
+        } 
         printf("Waiting for connections...\n");
 
         client_socket = accept(server_fd, (struct sockaddr *)&client_addr, &addr_len);
@@ -150,22 +211,36 @@ int main() {
             perror("Accept failed");
             exit(EXIT_FAILURE);
         }
-
         printf("Client connected\n");
         
-
-        // 부모 프로세스: 클라이언트와 데이터 송수신 처리
-        int send_result = 0;
-        while (1) {
-            if (send_result == 1) break;
-            send_result = send_data(client_socket, conn);
-            sleep(5); // 5초마다 데이터 전송
+        // 수신 프로세스 생성 : 로그인 정보를 받고, 종목 정보 데이터를 전송하는 프로세스
+        pid_t recv_pid = fork();
+        if (recv_pid < 0) {
+            perror("Fork failed");
+            close(client_socket);
+            exit(EXIT_FAILURE);
         }
-        close(client_socket);
-        close(server_fd);
 
-        // 자식 프로세스 종료 대기
-        kill(pid, SIGTERM);
+        if (recv_pid == 0) {
+            handle_client_recv(client_socket, conn);
+        }
+        else{
+            // 부모 프로세스: 클라이언트와 데이터 시세 데이터 5 초간격 송신 처리
+            int send_result = 0;
+            
+            while (1) {
+                if (send_result == 1) break;
+                send_result = send_data(client_socket, conn);
+                sleep(5); // 5초마다 데이터 전송
+            }
+            close(client_socket);
+            close(server_fd);
+
+            // 자식 프로세스 종료 대기
+            kill(msg_queue_pid, SIGTERM);
+            kill(recv_pid, SIGTERM);
+        }
+        
     }
 
     // free MYSQL conn 해주기

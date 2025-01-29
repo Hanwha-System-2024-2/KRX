@@ -105,7 +105,7 @@ kmt_current_market_prices getMarketPrice(MYSQL *conn) {
 }
 
 // 종목 정보 조회
-kmt_current_market_prices getStockInfo(MYSQL *conn) {
+kmt_stock_infos getStockInfo(MYSQL *conn) {
 	if(mysql_query(conn, "select * from stock_info")) {
 		finish_with_error(conn);
 	}	
@@ -126,10 +126,11 @@ kmt_current_market_prices getStockInfo(MYSQL *conn) {
 	while((row = mysql_fetch_row(result))) {
 		strcpy(data.body[i].stock_code, row[0]);
 		strcpy(data.body[i].stock_name, row[1]);
+		i++;
 	}
 	// free MYSQL_RES
 	mysql_free_result(result);
-
+	return data;
 }
 
 int updateMarketPrices(MYSQL *conn, msgbuf* msg, int type) { //type 1: 체결, type 2: 미체결
