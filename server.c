@@ -7,7 +7,6 @@
 #include "structures/kmt_messages.h"
 
 #define PORT 8080
-#define BUFFER_SIZE 1024
 
 void send_kmt_current_market_price(int client_socket, kmt_current_market_prices *prices);
 
