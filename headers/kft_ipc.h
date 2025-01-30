@@ -9,18 +9,6 @@
 #define EXECUTION_QUEUE_ID 5678
 #define EXECUTION_RESULT_STOCK_QUEUE_ID 0102
 
-typedef struct  {
-    long msgtype;  // 체결1 미체결2
-    char stock_code[7];  // 종목 코드
-    char order_type;     // 'B' (매수) or 'S' (매도)
-    int price;  // 체결 가격
-    int quantity; // 체결 수량
-} ExecutionMessage ;
-
-typedef struct  {
-    char stock_code[7];  // 종목 코드
-    hoga quantity[2]; 
-} ResultStockMessage ;
   
 
 extern int message_queue_id;
