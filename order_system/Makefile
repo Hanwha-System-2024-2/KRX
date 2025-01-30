@@ -8,7 +8,7 @@ TARGET = kft_server
 
 # 소스 및 헤더 파일
 SOURCES = server.c db_sql.c kft_log.c kft_ipc.c
-HEADERS = ../headers/kft_log.h ../headers/kft_db_sql.h ../headers/kft_messages.h ../headers/kft_ipc.h 
+HEADERS = ../headers/kft_log.h ../headers/kft_db_sql.h ../headers/krx_messages.h ../headers/kft_ipc.h 
 
 # 오브젝트 파일 생성 규칙
 OBJECTS = $(SOURCES:.c=.o)

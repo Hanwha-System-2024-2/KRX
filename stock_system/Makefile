@@ -9,7 +9,7 @@ TARGETS = kmt_server menu
 # 소스 파일 및 헤더 파일 경로
 KMT_SOURCES = kmt_server_db.c db_sql.c
 MENU_SOURCES = hanwha_krx_screen.c db_sql.c
-HEADERS = ../headers/kmt_messages.h ../headers/kmt_common.h
+HEADERS = ../headers/krx_messages.h ../headers/kmt_common.h
 
 # 기본 빌드 타겟
 all: $(TARGETS)

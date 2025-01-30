@@ -87,8 +87,10 @@ void process_orders() {
     log_message("NOTICE", "Server", "매칭 엔진 대기 중...");
 
     while (1) {
+
         // 주문 수신 프로세스의 주문 정보 전달을 기다림
         ssize_t bytes_received = msgrcv(order_queue_id, &order, sizeof(fkq_order), 0, 0);
+        // 시세 수신 메시지 큐 다 empty할 때 까지 받아서 업데이트
 
         // 주문 정보 수신
         printf("주문 수신: 종목 %s, 가격 %d, 수량 %d\n", order.stock_code, order.price, order.quantity);
