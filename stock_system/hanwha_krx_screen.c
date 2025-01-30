@@ -87,18 +87,13 @@ void display_market_price(MYSQL* conn) {
 
 // 2. 체결내역 출력
 void display_execution() {
-    FILE *log_file = fopen(LOG_FILE, "r");
-    if (!log_file) {
-        mvprintw(1, 2, "로그 파일을 열 수 없습니다.");
-        refresh();
-        getch();
-        return;
-    }
-
-    char stored_lines[100][1024]; // 최대 100개의 로그를 저장
-    int line_count = 0; // 저장된 로그 개수
-    long last_pos = 0; // 마지막으로 읽은 파일 위치
+    FILE *log_file;
     int refresh_rate = 1; // 새로고침 주기 (초 단위)
+    int ch;
+    
+    char **stored_lines = NULL; // 동적 로그 저장 배열
+    int line_count = 0; // 저장된 로그 개수
+    int scroll_offset = 0; // 화면 스크롤 오프셋
 
     while (1) {
         log_file = fopen(LOG_FILE, "r");
@@ -109,35 +104,37 @@ void display_execution() {
             return;
         }
 
-        fseek(log_file, last_pos, SEEK_SET); // 마지막으로 읽은 위치로 이동
+        // 기존 로그 메모리 해제
+        if (stored_lines) {
+            for (int i = 0; i < line_count; i++) {
+                free(stored_lines[i]);
+            }
+            free(stored_lines);
+        }
 
+        stored_lines = NULL;
+        line_count = 0;
+
+        // 파일에서 로그 읽기
         char line[1024];
         while (fgets(line, sizeof(line), log_file)) {
             if (strstr(line, "[MarketPriceUpdater]")) { // 로그 필터링
-                if (line_count < 100) { // 최대 100개까지만 저장
-                    strcpy(stored_lines[line_count++], line);
-                } else {
-                    // 저장된 로그가 100개를 초과하면 오래된 로그를 삭제하고 추가
-                    for (int i = 1; i < 100; i++) {
-                        strcpy(stored_lines[i - 1], stored_lines[i]);
-                    }
-                    strcpy(stored_lines[99], line);
-                }
+                stored_lines = realloc(stored_lines, (line_count + 1) * sizeof(char *));
+                stored_lines[line_count] = strdup(line);
+                line_count++;
             }
         }
-
-        last_pos = ftell(log_file); // 파일의 현재 위치 저장
         fclose(log_file);
 
-        // 화면 갱신
+        // 화면 출력
         clear();
-        mvprintw(1, 2, "체결 내역 (최대 100개)");
+        mvprintw(1, 2, "체결 내역 (스크롤 가능, ↑/↓ 이동, 'q' 종료)");
         mvprintw(2, 2, "-------------------------------------------------------------");
         mvprintw(3, 5, "%-15s %-10s %-10s %-10s %-20s", "Stock Code", "Price", "Quantity", "Fluctuation", "Time");
         mvprintw(4, 2, "-------------------------------------------------------------");
 
         int row = 5;
-        for (int i = 0; i < line_count; i++) {
+        for (int i = scroll_offset; i < line_count && row < LINES - 2; i++) {
             char stock_code[7], fluctuation_rate[11], market_time[19];
             int price, quantity;
 
@@ -152,7 +149,7 @@ void display_execution() {
             }
         }
 
-        mvprintw(row + 2, 2, "실시간으로 업데이트됩니다. 종료하려면 'q'를 누르세요.");
+        mvprintw(LINES - 1, 2, "↑/↓ 키로 스크롤, 'q' 키로 종료");
         refresh();
 
         // 입력 대기 및 새로고침 대기
@@ -166,14 +163,25 @@ void display_execution() {
 
         int ret = select(STDIN_FILENO + 1, &fds, NULL, NULL, &timeout);
         if (ret > 0) {
-            int ch = getch();
+            ch = getch();
             if (ch == 'q' || ch == 'Q') {
                 break; // 루프 종료
+            } else if (ch == KEY_DOWN && scroll_offset < line_count - (LINES - 6)) {
+                scroll_offset++;
+            } else if (ch == KEY_UP && scroll_offset > 0) {
+                scroll_offset--;
             }
         }
     }
-}
 
+    // 동적 할당된 메모리 해제
+    if (stored_lines) {
+        for (int i = 0; i < line_count; i++) {
+            free(stored_lines[i]);
+        }
+        free(stored_lines);
+    }
+}
 
 
 void display_menu(int highlight) {
