@@ -29,11 +29,50 @@ void finish_with_error(MYSQL *con) {
 }
 
 
-
 void format_current_time(char *buffer) {
     time_t now = time(NULL);
     struct tm *t = localtime(&now);
     strftime(buffer, 15, "%Y%m%d%H%M%S", t); // "yyyymmddhhmmss"
+}
+
+int checkBalance(MYSQL* conn, char* stock_code, char order_type, int order_quantity) {
+	int balance=0;
+	char query[512];
+
+	if(order_type=='B') {
+		// 잔량
+		snprintf(query, sizeof(query), 
+			"select selling_balance from market_prices "
+			"where stock_code= %s",
+			stock_code
+		);
+
+	}
+	else {
+		snprintf(query, sizeof(query), 
+			"select buying_balance from market_prices "
+			"where stock_code= %s",
+			stock_code
+		);
+
+	}
+
+	if(mysql_query(conn, query)) {
+		finish_with_error(conn);
+	}
+	MYSQL_RES *sql_result = mysql_store_result(conn);
+	if(sql_result==NULL) {
+		finish_with_error(conn);
+	}
+
+	MYSQL_ROW row;
+	while((row=mysql_fetch_row(sql_result))) {		
+		balance = atoi(row[0]);			
+	}
+
+	if(balance >= order_quantity) return 1;
+	else return 0;
+	
 }
 
 
@@ -142,7 +181,7 @@ kmt_stock_infos getStockInfo(MYSQL *conn) {
 	if(result==NULL) {
 		finish_with_error(conn);
 	}
-	// 헤더 부여 : 종목 정보 헤더 ID : 7
+	// 헤더 부여 : 종목 정보 헤더 ID : 14
 	kmt_stock_infos data;
 	data.header.tr_id=14;
 	data.header.length=sizeof(data);
@@ -270,6 +309,12 @@ int updateMarketPrices(MYSQL *conn, msgbuf* msg, int type) { //type 1: 체결, t
 	// 주문가가 상한가 또는 하한가 범위 밖일 때 에러처리? or 매수호가 범위 밖일 때 에러처리
 	if(f>30.0 || f<-30.0) {
 		printf("[ERROR: WRONG PRICE RANGE]\n");
+		return 0;
+	}
+
+	// 잔량 보다 많은 양을 주문한 경우 에러처리
+	if(checkBalance(conn, msg->stock_code, msg->order_type, msg->quantity) && type==1) {
+		printf("[NOT ENOUGH BALANCE]");
 		return 0;
 	}
 
