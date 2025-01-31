@@ -8,7 +8,7 @@
 kmt_current_market_prices getMarketPrice(MYSQL *conn);
 
 // 종목 정보 조회
-kmt_current_market_prices getStockInfo(MYSQL *conn);
+kmt_stock_infos getStockInfo(MYSQL *conn);
 
 // 시세 업데이트
 int updateMarketPrices();

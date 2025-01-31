@@ -12,21 +12,15 @@
 #include <errno.h>
 #include "../headers/kmt_common.h"
 #include "../headers/krx_messages.h"
+#include "../headers/kft_ipc.h"
 
 #define PORT 8080
-#define QUEUE_KEY 1234
 #ifndef SIGTERM
 #define SIGTERM 15
 #endif
 
 
-typedef struct  {
-    long msgtype; // 1: 체결  2: 미체결 
-    char stock_code[7];  // 종목 코드
-    char order_type;     // 'B' (매수) or 'S' (매도)
-    int price;  // 체결 가격
-    int quantity; // 체결 수량
-} msgbuf;
+
 
 typedef struct  {
     long msgtype; // 1: 체결  2: 미체결 
@@ -35,7 +29,7 @@ typedef struct  {
     int price;  // 체결 가격
     int quantity; // 체결 수량
     char time[19]; // 체결 시간
-} msgbuf_info;
+} ExecutionMessageInfo;
 
 int send_data(int client_socket, MYSQL* conn) {
     kmt_current_market_prices data;
@@ -121,11 +115,11 @@ int main() {
 
     //============ 메세지 큐 연결 =============
     int original_key_id;
-    msgbuf msg;
-    msgbuf_info msg_info;
+    ExecutionMessage msg;
+    ExecutionMessageInfo msg_info;
     msg.msgtype = 1;
     msg_info.msgtype=1;
-    original_key_id = msgget((key_t) QUEUE_KEY, IPC_CREAT|0666);
+    original_key_id = msgget((key_t) STOCK_SYSTEM_QUEUE_ID, IPC_CREAT|0666);
     if (original_key_id == -1) {
         printf("Message Get Failed!\n");
         exit(0);
@@ -229,8 +223,8 @@ int main() {
             int send_result = 0;
             
             while (1) {
-                if (send_result == 1) break;
                 send_result = send_data(client_socket, conn);
+                if (send_result == 1) break;
                 updateMarketPricesAuto(conn);
                 sleep(5); // 5초마다 데이터 전송
             }
