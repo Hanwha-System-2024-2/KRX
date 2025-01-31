@@ -3,24 +3,20 @@
 #include<string.h>
 #include<time.h>
 #include<memory.h>
-#include<syslog.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
 #include "/usr/include/mysql/mysql.h"
 #include "../headers/kmt_common.h"
 #include "../headers/krx_messages.h"
+#include "../headers/kft_ipc.h"
 
 #define DB_HOST "localhost"
 #define DB_USER "root"
 #define DB_PASS "Hanwha1!"
 #define DB_NAME "hanwha_krx"
 
-
-typedef struct  {
-    long msgtype; 
-    char stock_code[7];  // 종목 코드
-    char order_type;     // 'B' (매수) or 'S' (매도)
-    int price;  // 체결 가격
-    int quantity; // 체결 수량
-} msgbuf;
 
 void finish_with_error(MYSQL *con) {
     fprintf(stderr, "%s\n", mysql_error(con));
@@ -35,44 +31,69 @@ void format_current_time(char *buffer) {
     strftime(buffer, 15, "%Y%m%d%H%M%S", t); // "yyyymmddhhmmss"
 }
 
-int checkBalance(MYSQL* conn, char* stock_code, char order_type, int order_quantity) {
-	int balance=0;
+void getBalance(MYSQL* conn, char order_type, ResultStockMessage* data) {
 	char query[512];
+	int selling_balance, buying_balance; // 매도잔량, 매수잔량
+	int bid_price, ask_price; // 매도호가, 매수호가
+	
+	
 
-	if(order_type=='B') {
-		// 잔량
+	if(order_type=='B') { // 매수
+		data->quantity.trading_type=0;
 		snprintf(query, sizeof(query), 
-			"select selling_balance from market_prices "
-			"where stock_code= %s",
-			stock_code
-		);
+			"SELECT buying_balance, ask_price "
+			"FROM market_prices "
+			"WHERE stock_code = %s",
+			data->stock_code);
+		
 
-	}
-	else {
+	} else { // 매도
+		data->quantity.trading_type=1;
 		snprintf(query, sizeof(query), 
-			"select buying_balance from market_prices "
-			"where stock_code= %s",
-			stock_code
-		);
-
+			"SELECT selling_balance, bid_price "
+			"FROM market_prices "
+			"WHERE stock_code = %s",
+			data->stock_code);
 	}
 
 	if(mysql_query(conn, query)) {
-		finish_with_error(conn);
-	}
-	MYSQL_RES *sql_result = mysql_store_result(conn);
-	if(sql_result==NULL) {
-		finish_with_error(conn);
-	}
+			finish_with_error(conn);
+		}
+		MYSQL_RES *sql_result = mysql_store_result(conn);
+		if(sql_result==NULL) {
+			finish_with_error(conn);
+		}
+		MYSQL_ROW row;
+		
+		while((row=mysql_fetch_row(sql_result))) {
+			data->quantity.balance=atoi(row[0]);		
+			data->quantity.price=atoi(row[1]);
+		}
 
-	MYSQL_ROW row;
-	while((row=mysql_fetch_row(sql_result))) {		
-		balance = atoi(row[0]);			
-	}
-
-	if(balance >= order_quantity) return 1;
-	else return 0;
 	
+}
+
+void sendResultMessage(ResultStockMessage* data) {
+	key_t key = EXECUTION_RESULT_STOCK_QUEUE_ID; // queue key value
+	int msgq_id;
+	
+
+	if((msgq_id = msgget(key, IPC_CREAT | 0666)) == -1)
+	{
+		perror("msgget() failed!");
+		exit(1);
+	}	
+
+	
+
+	if (msgsnd(msgq_id, data, sizeof(ResultStockMessage), IPC_NOWAIT) == -1) {
+        perror("msgsnd failed");
+        exit(EXIT_FAILURE);
+    }
+	printf("[주문 전송 완료] 종목 코드: %s, 잔량: %d, 호가: %d\n", data->stock_code, data->quantity.balance, data->quantity.price);
+    
+
+
 }
 
 
@@ -201,8 +222,8 @@ kmt_stock_infos getStockInfo(MYSQL *conn) {
 
 
 void updateMarketPricesAuto(MYSQL* conn) {
-	msgbuf hanwha;
-	msgbuf samsung;
+	ExecutionMessage hanwha;
+	ExecutionMessage samsung;
 	hanwha.msgtype=1;
 	samsung.msgtype=1;
 	strcpy(hanwha.stock_code, "272210");
@@ -241,7 +262,7 @@ void updateMarketPricesAuto(MYSQL* conn) {
 }
 
 
-int updateMarketPrices(MYSQL *conn, msgbuf* msg, int type) { //type 1: 체결, type 2: 미체결
+int updateMarketPrices(MYSQL *conn, ExecutionMessage* msg, int type) { //type 1: 체결, type 2: 미체결
 	int result=1;
 	char query[512];
 	int closing_price=0;
@@ -250,12 +271,15 @@ int updateMarketPrices(MYSQL *conn, msgbuf* msg, int type) { //type 1: 체결, t
 	int highest_price;
 	char fluctuation_rate[11];
 	char market_time[19];
+	ResultStockMessage data;
+
+
 	format_current_time(market_time);
-	
+	strcpy(data.stock_code, msg->stock_code);
 	
 	
 	// 전일 종가, 고가, 저가 불러오기
-	if(mysql_query(conn, "select stock_code, closing_price, high_price, low_price  from market_prices")) {
+	if(mysql_query(conn, "select stock_code, closing_price, high_price, low_price from market_prices")) {
 		finish_with_error(conn);
 	}
 	MYSQL_RES *sql_result = mysql_store_result(conn);
@@ -285,7 +309,7 @@ int updateMarketPrices(MYSQL *conn, msgbuf* msg, int type) { //type 1: 체결, t
 		snprintf(query, sizeof(query), 
 		"UPDATE market_prices "
 		"SET high_price = %d "
-		"WHERE stock_code = '%s'",
+		"WHERE stock_code = %s",
 		highest_price, msg->stock_code);
 	}
 
@@ -293,7 +317,7 @@ int updateMarketPrices(MYSQL *conn, msgbuf* msg, int type) { //type 1: 체결, t
 		snprintf(query, sizeof(query),
 		"UPDATE market_prices "
 		"SET low_price = %d "
-		"WHERE stock_code = '%s'",		
+		"WHERE stock_code = %s",		
 		lowest_price, msg->stock_code);
 	}	
 	// 쿼리 초기화
@@ -306,17 +330,6 @@ int updateMarketPrices(MYSQL *conn, msgbuf* msg, int type) { //type 1: 체결, t
 	float f = (float)((float)(msg->price - closing_price) / closing_price) *100;		
 	sprintf(fluctuation_rate, "%.2f%%", f);
 
-	// 주문가가 상한가 또는 하한가 범위 밖일 때 에러처리? or 매수호가 범위 밖일 때 에러처리
-	if(f>30.0 || f<-30.0) {
-		printf("[ERROR: WRONG PRICE RANGE]\n");
-		return 0;
-	}
-
-	// 잔량 보다 많은 양을 주문한 경우 에러처리
-	if(checkBalance(conn, msg->stock_code, msg->order_type, msg->quantity) && type==1) {
-		printf("[NOT ENOUGH BALANCE]");
-		return 0;
-	}
 
 
 	if(type==1) { // 체결 : 현잔량 - 호가잔량
@@ -362,23 +375,21 @@ int updateMarketPrices(MYSQL *conn, msgbuf* msg, int type) { //type 1: 체결, t
 	if (mysql_query(conn, query)) {
         	fprintf(stderr, "MySQL Query Error: %s\n", mysql_error(conn));
         	return 0;
-	}
-	
-	
+	}	
 
 	// free sql result 
 	mysql_free_result(sql_result);
 
 
+	// 메시지 보내기	
+	getBalance(conn, msg->order_type, &data);
+	sendResultMessage(&data);
+
+
 	// 업데이트 확인 로그찍기
 	printf("[LOG] Stock Code: %s, Price: %d, Quantity: %d, Fluctuation Rate: %s, Time: %s\n", 
         msg->stock_code, msg->price, msg->quantity, fluctuation_rate, market_time);
-	// syslog로 로그 남기기
-	// syslog 초기화
-    openlog("MarketPriceUpdater", LOG_PID | LOG_CONS | LOG_NDELAY, LOG_USER);
-    syslog(LOG_INFO, "Stock Code: %s, Price: %d, Quantity: %d, Fluctuation Rate: %s, Time: %s",
-           msg->stock_code, msg->price, msg->quantity, fluctuation_rate, market_time);
-	closelog(); // syslog 종료
+	
 	// 파일에 직접 기록
 	FILE *log_file = fopen("/home/ec2-user/KRX/log/update_market_price.log", "a");
 	if (log_file) {
