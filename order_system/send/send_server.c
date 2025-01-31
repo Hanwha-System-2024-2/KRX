@@ -8,7 +8,7 @@
 #include <sys/msg.h>
 
 #include "../../headers/kft_log.h"
-#include "../../headers/kft_ipc.h"
+#include "../../headers/kft_ipc_db.h"
 
 #define SERVER_IP "3.35.106.137"   // fep
 #define SERVER_IP "43.201.218.194" // test server
