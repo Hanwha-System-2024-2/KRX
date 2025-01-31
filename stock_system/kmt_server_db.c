@@ -11,7 +11,7 @@
 #include <sys/select.h>
 #include <errno.h>
 #include "../headers/kmt_common.h"
-#include "../headers/kmt_messages.h"
+#include "../headers/krx_messages.h"
 
 #define PORT 8080
 #define QUEUE_KEY 1234

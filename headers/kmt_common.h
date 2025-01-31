@@ -1,7 +1,7 @@
 #ifndef KMT_COMMON_H
 #define KMT_COMMON_H
 
-#include "kmt_messages.h"
+#include "krx_messages.h"
 #include<mysql/mysql.h>
 
 // 시세 조회

@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <time.h>
-#include "structures/kmt_messages.h"
+#include "structures/krx_messages.h"
 
 #define PORT 8080
 

@@ -6,7 +6,7 @@
 #include<syslog.h>
 #include "/usr/include/mysql/mysql.h"
 #include "../headers/kmt_common.h"
-#include "../headers/kmt_messages.h"
+#include "../headers/krx_messages.h"
 
 #define DB_HOST "localhost"
 #define DB_USER "root"

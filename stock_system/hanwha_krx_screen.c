@@ -10,7 +10,7 @@
 #include <unistd.h>
 #include <string.h>
 #include "../headers/kmt_common.h"
-#include "../headers/kmt_messages.h"
+#include "../headers/krx_messages.h"
 #define MAX_MSG_SIZE 512
 #define QUEUE_KEY 5678
 #define LOG_FILE "/home/ec2-user/KRX/log/update_market_price.log"
