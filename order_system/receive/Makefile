@@ -8,7 +8,7 @@ TARGET = kft_receive_server
 
 # 소스 및 헤더 파일
 SOURCES = receive_server.c ../kft_log.c ../kft_ipc.c
-HEADERS = ../../headers/kft_log.h ../../headers/_db ../../headers/krx_messages.h
+HEADERS = ../../headers/kft_log.h ../../headers/kft_ipc_db.h ../../headers/krx_messages.h
 
 
 # 오브젝트 파일 생성 규칙

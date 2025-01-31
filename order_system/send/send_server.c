@@ -11,7 +11,7 @@
 #include "../../headers/kft_ipc_db.h"
 
 #define SERVER_IP "3.35.106.137"   // fep
-#define SERVER_IP "43.201.218.194" // test server
+// #define SERVER_IP "43.201.218.194" // test server
 #define SERVER_PORT 8089
 
 // fep 서버에 연결
@@ -83,7 +83,7 @@ int main() {
                         printf("서버 재연결 성공");
                         break;
                     }
-                    sleep(2);
+                    // sleep(2);
                 }
 
                 if (sock == -1) {
