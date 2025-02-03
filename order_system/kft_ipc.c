@@ -10,7 +10,7 @@ int init_message_queue(int key_id) {
         exit(1);
     }
     printf("메시지 큐 생성 완료 (ID: %d)\n", message_queue_id);
-    log_message("NOTICE", "Server", "메시지 큐 생성 완료 (ID: %d)\n", message_queue_id);
+    log_message("NOTICE", "Server", "메시지 큐 생성 완료 (ID: %d)", message_queue_id);
     return message_queue_id;
 }
 
@@ -33,7 +33,7 @@ void send_to_queue(int message_queue_id, long msgtype, char *stock_code, char or
         log_message("ERROR", "MessageQueue", "msgsnd() 실패");
     } else {
         printf("msgsnd() 성공: %s, 수량 %d, 가격 %d\n", stock_code, quantity, price);
-        log_message("NOTICE", "MessageQueue","msgsnd() 성공: %s, 수량 %d, 가격 %d\n", stock_code, quantity, price);
+        log_message("NOTICE", "MessageQueue","msgsnd() 성공: %s, 수량 %d, 가격 %d", stock_code, quantity, price);
     }
 }
 
@@ -49,7 +49,7 @@ void send_order_to_queue(int message_queue_id, fkq_order *msg) {
         log_message("ERROR", "MessageQueue", "msgsnd() 실패");
     } else {
         printf("msgsnd() 성공: %s, 수량 %d, 가격 %d\n", msg->stock_name, msg->quantity, msg->price);
-        log_message("NOTICE", "MessageQueue","msgsnd() 성공: %s, 수량 %d, 가격 %d\n", msg->stock_name, msg->quantity, msg->price);
+        log_message("NOTICE", "MessageQueue","msgsnd() 성공: %s, 수량 %d, 가격 %d", msg->stock_name, msg->quantity, msg->price);
     }
 }
 
@@ -64,6 +64,6 @@ void send_execution_to_queue(int message_queue_id, kft_execution *msg) {
         log_message("ERROR", "MessageQueue", "msgsnd() 실패");
     } else {
         printf("msgsnd() 성공: %s, 가격 %d\n", msg->transaction_code, msg->executed_price);
-        log_message("NOTICE", "MessageQueue","msgsnd() 성공: %s, 가격 %d\n", msg->transaction_code, msg->executed_price);
+        log_message("NOTICE", "MessageQueue","msgsnd() 성공: %s, 가격 %d", msg->transaction_code, msg->executed_price);
     }
 }
