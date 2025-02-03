@@ -90,15 +90,10 @@ typedef struct  {
 } ExecutionMessage ;
 
 typedef struct  {
-    char stock_code[7];  // 종목 코드
-    hoga quantity; 
-} ResultStockMessage ;
-
-typedef struct  {
     long msgtype;
     char stock_code[7];  // 종목 코드
     hoga quantity; 
-} ResultStockMessageSnd ;
+} ResultStockMessage ;
 
 
 #endif

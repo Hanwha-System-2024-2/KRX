@@ -31,7 +31,7 @@ void format_current_time(char *buffer) {
     strftime(buffer, 15, "%Y%m%d%H%M%S", t); // "yyyymmddhhmmss"
 }
 
-void getBalance(MYSQL* conn, char order_type, ResultStockMessageSnd* data) {
+void getBalance(MYSQL* conn, char order_type, ResultStockMessage* data) {
 	char query[512];
 	int selling_balance, buying_balance; // 매도잔량, 매수잔량
 	int bid_price, ask_price; // 매도호가, 매수호가
@@ -73,7 +73,7 @@ void getBalance(MYSQL* conn, char order_type, ResultStockMessageSnd* data) {
 	
 }
 
-void sendResultMessage(ResultStockMessageSnd *data) {
+void sendResultMessage(ResultStockMessage *data) {
 	key_t key = EXECUTION_RESULT_STOCK_QUEUE_ID; // queue key value
 	int msgq_id;
 	data->msgtype=1;
@@ -85,7 +85,7 @@ void sendResultMessage(ResultStockMessageSnd *data) {
 	}	
 	
 
-	if (msgsnd(msgq_id, data, sizeof(ResultStockMessageSnd)- sizeof(long), IPC_NOWAIT) == -1) {
+	if (msgsnd(msgq_id, data, sizeof(ResultStockMessage)- sizeof(long), IPC_NOWAIT) == -1) {
 		// 파일에 직접 기록
 		FILE *log_file = fopen("/home/ec2-user/KRX/log/update_market_price.log", "a");
 		if (log_file) {
@@ -278,7 +278,7 @@ int updateMarketPrices(MYSQL *conn, ExecutionMessage* msg, int type) { //type 1:
 	int highest_price;
 	char fluctuation_rate[11];
 	char market_time[19];
-	ResultStockMessageSnd data;
+	ResultStockMessage data;
 
 
 	format_current_time(market_time);

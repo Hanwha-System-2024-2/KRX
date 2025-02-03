@@ -67,17 +67,15 @@ void receive_message() {
         return; // 오류 발생해도 종료하지 않고 계속 실행
     }
 
-    printf("[Received] Stock: %s, Trading Type: %d, Balance: %d, Price: %d\n",
+    printf("[Received] Stock: %s, Balance: %d\n",
            received_msg.stock_code,
-           received_msg.quantity.trading_type,
-           received_msg.quantity.balance,
-           received_msg.quantity.price);
+           received_msg.quantity.balance);
 }
 
 int main() {
     while (1) {
-        send_message();
-        sleep(2); // 1초 대기
+        // send_message();
+        // sleep(2); // 1초 대기
         receive_message();
         sleep(2);
     }
