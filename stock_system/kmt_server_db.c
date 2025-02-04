@@ -226,7 +226,7 @@ int main() {
                 send_result = send_data(client_socket, conn);
                 if (send_result == 1) break;
                 // 랜덤 시세 변경 함수
-                // updateMarketPricesAuto(conn);
+                updateMarketPricesAuto(conn);
                 sleep(2); // 5초마다 데이터 전송
             }
             close(client_socket);

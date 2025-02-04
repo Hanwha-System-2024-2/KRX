@@ -394,8 +394,8 @@ int updateMarketPrices(MYSQL *conn, ExecutionMessage* msg, int type) { //type 1:
 
 
 	// 업데이트 확인 로그찍기
-	// printf("[LOG] Stock Code: %s, Price: %d, Quantity: %d, Fluctuation Rate: %s, Time: %s\n", 
-    //     msg->stock_code, msg->price, msg->quantity, fluctuation_rate, market_time);
+	printf("[LOG] Stock Code: %s, Price: %d, Quantity: %d, Fluctuation Rate: %s, Time: %s\n", 
+        msg->stock_code, msg->price, msg->quantity, fluctuation_rate, market_time);
 	
 	// 파일에 직접 기록
 	FILE *log_file = fopen("/home/ec2-user/KRX/log/update_market_price.log", "a");

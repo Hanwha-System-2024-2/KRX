@@ -82,8 +82,10 @@ typedef struct {
 } kft_execution;
 
 typedef struct  {
-    long msgtype;  // 체결1 미체결2
+    long msgtype;  // 1: 우선순위 2: 일반 3: 후순위
+    int exectype;  // 체결1 미체결2
     char stock_code[7]; // 종목 코드
+    char transaction_code[7]; // 거래코드
     char order_type;   // 'B' (매수) or 'S' (매도)
     int price;  // 체결 가격
     int quantity; // 체결 수량
