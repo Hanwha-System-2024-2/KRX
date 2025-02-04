@@ -279,7 +279,7 @@ void process_orders() {
 
 int main() {
     printf("[TRACE] 매칭 엔진 시작\n");
-    log_file_path=RECERIVE_LOG_FILE;
+    log_file_path=MATCH_LOG_FILE;
     open_log_file();
     log_message("TRACE", "[%s] Server: 매칭 엔진 서버 시작.", get_timestamp_char());
     process_orders();

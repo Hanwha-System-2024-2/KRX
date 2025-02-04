@@ -25,7 +25,7 @@ void send_to_queue(int message_queue_id, long exectype, char *stock_code, char *
     msg.msgtype = 2;
     msg.exectype = exectype;
     strcpy(msg.stock_code, stock_code);
-    strcpy(msg.stock_code, transaction_code);
+    strcpy(msg.transaction_code, transaction_code);
     msg.order_type = order_type;
     msg.price = price;
     msg.quantity = quantity;
@@ -51,7 +51,7 @@ void send_order_to_queue(int message_queue_id, fkq_order *msg) {
         log_message("ERROR", "[%s] MessageQueue: msgsnd() 실패", get_timestamp_char());
     } else {
         printf("[TRACE] msgsnd() 성공: %s, 수량 %d, 가격 %d\n", msg->stock_name, msg->quantity, msg->price);
-        log_message("TRACE", "[%s] MessageQueue","msgsnd() 성공: %s, 수량 %d, 가격 %d",get_timestamp_char(), msg->stock_name, msg->quantity, msg->price);
+        log_message("TRACE", "[%s] MessageQueue: msgsnd() 성공: %s, 수량 %d, 가격 %d",get_timestamp_char(), msg->stock_name, msg->quantity, msg->price);
     }
 }
 
@@ -66,6 +66,6 @@ void send_execution_to_queue(int message_queue_id, kft_execution *msg) {
         log_message("ERROR", "[%s] MessageQueue: msgsnd() 실패",get_timestamp_char());
     } else {
         printf("[TRACE] msgsnd() 성공: %s, 가격 %d\n", msg->transaction_code, msg->executed_price);
-        log_message("TRACE", "[%s] MessageQueue","msgsnd() 성공: %s, 가격 %d",get_timestamp_char(), msg->transaction_code, msg->executed_price);
+        log_message("TRACE", "[%s] MessageQueue: msgsnd() 성공: %s, 가격 %d",get_timestamp_char(), msg->transaction_code, msg->executed_price);
     }
 }

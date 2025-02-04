@@ -88,11 +88,11 @@ int main() {
     struct sockaddr_in address;                      // 서버, 클라이언트의 IP 주소 및 포트 정보를 설정
     socklen_t addrlen = sizeof(address);
 
-
-    int que_id= init_message_queue(ORDER_QUEUE_ID);
-
+    // 로깅 시스템 세팅
     log_file_path=RECERIVE_LOG_FILE;
     open_log_file();
+
+    int que_id= init_message_queue(ORDER_QUEUE_ID);
 
     log_message("TRACE", "[%s] Server: 주문 수신 서버 시작. 포트: %d", get_timestamp_char(), PORT);
     printf("[TRACE] 주문 수신 서버 시작. 포트: %d\n", PORT);
