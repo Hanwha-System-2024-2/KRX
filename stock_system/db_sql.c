@@ -73,22 +73,28 @@ void getBalance(MYSQL* conn, char order_type, ResultStockMessage* data) {
 	
 }
 
-void sendResultMessage(ResultStockMessage* data) {
+void sendResultMessage(ResultStockMessage *data) {
 	key_t key = EXECUTION_RESULT_STOCK_QUEUE_ID; // queue key value
 	int msgq_id;
-	
+	data->msgtype=1;
 
 	if((msgq_id = msgget(key, IPC_CREAT | 0666)) == -1)
 	{
 		perror("msgget() failed!");
 		exit(1);
 	}	
-
 	
 
-	if (msgsnd(msgq_id, data, sizeof(ResultStockMessage), IPC_NOWAIT) == -1) {
-        perror("msgsnd failed");
-        exit(EXIT_FAILURE);
+	if (msgsnd(msgq_id, data, sizeof(ResultStockMessage)- sizeof(long), IPC_NOWAIT) == -1) {
+		// 파일에 직접 기록
+		FILE *log_file = fopen("/home/ec2-user/KRX/log/update_market_price.log", "a");
+		if (log_file) {
+			fprintf(log_file, "[Error Log] Stock Code: %s, Quantity: %d\n",
+					data->stock_code, data->quantity.balance);
+			fclose(log_file);
+		}
+        printf("msgsnd failed");
+        return;
     }
 	printf("[주문 전송 완료] 종목 코드: %s, 잔량: %d, 호가: %d\n", data->stock_code, data->quantity.balance, data->quantity.price);
     
@@ -153,6 +159,7 @@ kmt_current_market_prices getMarketPrice(MYSQL *conn) {
 	
 	
 	kmt_current_market_prices data;
+	memset(&data, 0, sizeof(data));
 	// 헤더 부여 : 시세 ID 8
 	data.header.tr_id=8;
 	data.header.length=sizeof(data);
@@ -184,7 +191,7 @@ kmt_current_market_prices getMarketPrice(MYSQL *conn) {
 		i++;		
 	}
 	// 보낸 로그 찍기
-	printf("[SEND DATA: %s] \n", data.body[0].market_time);
+	// printf("[SEND DATA: %s] \n", data.body[0].market_time);
 
 	// free MYSQL_RES
 	mysql_free_result(result);
