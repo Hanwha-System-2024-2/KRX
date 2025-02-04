@@ -9,7 +9,9 @@
 #define EXECUTION_QUEUE_ID 5678
 #define EXECUTION_RESULT_STOCK_QUEUE_ID 0102
 
-  
+#define RECERIVE_LOG_FILE "/home/ec2-user/KRX/log/receive_server.log"
+#define MATCH_LOG_FILE "/home/ec2-user/KRX/log/match_server.log"
+#define SEND_LOG_FILE "/home/ec2-user/KRX/log/send_server.log"
 
 extern int message_queue_id;
 
@@ -17,7 +19,7 @@ extern int message_queue_id;
 int init_message_queue(int key_id);
 
 // 메시지 큐로 데이터 전송
-void send_to_queue(int message_queue_id, long msgtype, char *stock_code, char order_type, int price, int quantity);
+void send_to_queue(int message_queue_id, long msgtype, char *stock_code, char *transaction_code, char order_type, int price, int quantity);
 void send_order_to_queue(int message_queue_id, fkq_order *msg);
 void send_execution_to_queue(int message_queue_id, kft_execution *msg);
 
