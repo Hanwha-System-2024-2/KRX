@@ -32,17 +32,17 @@ tmp_stock_info stock_list[MAX_STOCKS] = {
 };
 
 void print_stock_list() {
-    printf("\n최신 종목 정보:\n");
-    printf("+------------+---------------+---------------+---------------+-----------+-----------+\n");
-    printf("| Stock Code | Closing Price | BuyingBalance | SellingBalance | Bid Price | Ask Price |\n");
-    printf("+------------+---------------+---------------+---------------+-----------+-----------+\n");
+    printf("\n[INFO] 최신 종목 정보:\n");
+    printf("+-------------+----------------+----------------+----------------+------------+------------+\n");
+    printf("| Stock  Code | Closing  Price | Buying Balance | SellingBalance | Bid  Price | Ask  Price |\n");
+    printf("+-------------+----------------+----------------+----------------+------------+------------+\n");
     for (int i = 0; i < MAX_STOCKS; i++) {
-        printf("| %-10s | %-13d | %-13d | %-13d | %-9d | %-9d |\n",
+        printf("| %-11s | %-14d | %-14d | %-14d | %-10d | %-10d |\n",
                stock_list[i].stock_code, stock_list[i].closing_price,
                stock_list[i].buying_balance, stock_list[i].selling_balance,
                stock_list[i].bid_price, stock_list[i].ask_price);
     }
-    printf("+------------+---------------+---------------+---------------+-----------+-----------+\n\n");
+    printf("+-------------+----------------+----------------+----------------+------------+------------+\n\n");
 }
 
 // 종목별 시세 정보 조회
@@ -56,7 +56,7 @@ void get_latest_stock_info(MYSQL *conn) {
             "WHERE stock_code = '%s' ORDER BY time DESC LIMIT 1;", stock_list[i].stock_code);
 
         if (mysql_query(conn, query)) {
-            printf("MySQL query error: %s\n", mysql_error(conn));
+            printf("[ERROR] MySQL query error: %s\n", mysql_error(conn));
             log_message("ERROR", "StockData", "시세 데이터 확인 실패 (종목코드: %s)",stock_list[i].stock_code);
             return;
         }
@@ -72,7 +72,7 @@ void get_latest_stock_info(MYSQL *conn) {
             stock_list[i].bid_price = atoi(row[4]);        // 매수 호가
             stock_list[i].ask_price = atoi(row[5]);        // 매도 호가
         } else {
-            printf("종목 %s의 최신 데이터 없음.\n", stock_list[i].stock_code);
+            printf("[WARNING] 종목 %s의 최신 데이터 없음.\n", stock_list[i].stock_code);
         }
 
         mysql_free_result(result);
@@ -90,11 +90,11 @@ void update_stock_info(ResultStockMessage *msg) {
             if (msg->quantity.trading_type == 0) {
                 stock_list[i].buying_balance = msg->quantity.balance;
                 stock_list[i].bid_price = msg->quantity.price;
-                printf("%s - 매수 호가: %d원, 잔량: %d\n", stock_list[i].stock_code, stock_list[i].bid_price, stock_list[i].buying_balance);
+                // printf("[INFO] %s - 매수 호가: %d원, 잔량: %d\n", stock_list[i].stock_code, stock_list[i].bid_price, stock_list[i].buying_balance);
             } else if (msg->quantity.trading_type == 1) {
                 stock_list[i].selling_balance = msg->quantity.balance;
                 stock_list[i].ask_price = msg->quantity.price;
-                printf("%s - 매도 호가: %d원, 잔량: %d\n", stock_list[i].stock_code, stock_list[i].ask_price, stock_list[i].selling_balance);
+                // printf("[INFO] %s - 매도 호가: %d원, 잔량: %d\n", stock_list[i].stock_code, stock_list[i].ask_price, stock_list[i].selling_balance);
             }
             return;
         }
@@ -113,29 +113,27 @@ void process_orders() {
     get_latest_stock_info(conn);
 
     fkq_order order;
-    printf("매칭 엔진 대기 중...\n");
+    printf("[NOTICE] 매칭 엔진 대기 중...\n");
     log_message("NOTICE", "Server", "매칭 엔진 대기 중...");
 
     while (1) {
-
         // 주문 수신 프로세스의 주문 정보 전달을 기다림
         ssize_t bytes_received = msgrcv(order_queue_id, &order, sizeof(fkq_order), 0, 0);
         // 시세 수신 메시지 큐 다 empty할 때 까지 받아서 업데이트 해줘
         ResultStockMessage rstmsg;
     
-        while (msgrcv(execution_result_stock_queue_id, &rstmsg, sizeof(ResultStockMessage), 0, IPC_NOWAIT) != -1) {
-            printf("sdsdsdsdsdsdsds %d\n", rstmsg.quantity.balance);
+        while (msgrcv(execution_result_stock_queue_id, &rstmsg, sizeof(ResultStockMessage)-sizeof(long), 0, IPC_NOWAIT) != -1) {
             update_stock_info(&rstmsg);
         }
         
         if (errno == ENOMSG) {
-            printf("시세 데이터 최신화 완료. 큐가 비었습니다.\n");
+            printf("[INFO] 시세 데이터 최신화 완료. 큐가 비었습니다.\n");
         } else {
-            perror("msgrcv error");
+            perror("[ERROR] msgrcv error");
         }
 
         // 주문 정보 수신
-        printf("주문 수신: 종목 %s, 가격 %d, 수량 %d\n", order.stock_code, order.price, order.quantity);
+        printf("[INFO] 주문 수신: 종목 %s, 가격 %d, 수량 %d\n", order.stock_code, order.price, order.quantity);
         log_message("INFO", "OrderProcessor", "주문 수신 - 종목: %s, 거래코드: %s, 유저: %s, 수량: %d, 가격: %d",
                 order.stock_code, order.transaction_code, order.user_id, order.quantity, order.price);
 
@@ -154,7 +152,6 @@ void process_orders() {
         }
         // 종목이 없으면 주문 거부
         if (stock_index == -1) {
-            printf("유효하지 않은 종목 코드: %s\n", order.stock_code);
             execution.header.tr_id = KFT_EXECUTION;
             execution.header.length = sizeof(kft_execution);
             strcpy(execution.transaction_code, order.transaction_code);
@@ -164,6 +161,9 @@ void process_orders() {
             strcpy(execution.original_order, order.original_order);
             strcpy(execution.reject_code, "E206");
             send_execution_to_queue(execution_queue_id, &execution);
+
+            printf("[WARNING] 유효하지 않은 종목 코드: %s\n", order.stock_code);
+            log_message("WARNING", "ExecutionProcessor", "주문 거부: 존재하지 않는 종목 코드");
             continue;
         }
 
@@ -173,7 +173,7 @@ void process_orders() {
         int lower_limit = closing_price * 0.7;
 
         if (order.price > upper_limit || order.price < lower_limit) {
-            printf("주문 가격 초과: %d (허용 범위: %d ~ %d)\n", order.price, lower_limit, upper_limit);
+            printf("[WARNING] 주문 가격 초과: %d (허용 범위: %d ~ %d)\n", order.price, lower_limit, upper_limit);
             log_message("WARNING", "OrderProcessor", "상한가, 하한가를 벗어난 주문 요청 - 종목: %s, 주문 가격: %d (허용 범위: %d ~ %d)", order.stock_code, order.price, lower_limit, upper_limit);
 
             // 체결 오류 반환 (거래 불가)
@@ -197,11 +197,6 @@ void process_orders() {
         int available_selling_balance = stock_list[stock_index].selling_balance;
         
         if (order.order_type == 'S' && order.quantity > available_selling_balance) {
-            printf("주문 거부: 매도 잔량 부족 (주문 수량: %d, 가용 매도 잔량: %d)\n",
-                   order.quantity, available_selling_balance);
-            log_message("WARNING", "OrderProcessor", "주문 거부 - 매도 잔량 부족: 종목: %s, 주문 수량: %d, 가용 매도 잔량: %d",
-                        order.stock_code, order.quantity, available_selling_balance);
-            
             // 체결 오류 반환 (거래 불가)
             execution.header.tr_id = KFT_EXECUTION;
             execution.header.length = sizeof(kft_execution);
@@ -213,15 +208,15 @@ void process_orders() {
             strcpy(execution.reject_code, "E204");
             send_execution_to_queue(execution_queue_id, &execution);
 
+            printf("[WARNING] 주문 거부- 매도 잔량 부족 (주문 수량: %d, 가용 매도 잔량: %d)\n",
+                   order.quantity, available_selling_balance);
+            log_message("WARNING", "OrderProcessor", "주문 거부 - 매도 잔량 부족: 종목: %s, 주문 수량: %d, 가용 매도 잔량: %d",
+                        order.stock_code, order.quantity, available_selling_balance);
+            
             continue;
         }
 
         if (order.order_type == 'B' && order.quantity > available_buying_balance) {
-            printf("주문 거부: 매수 잔량 부족 (주문 수량: %d, 가용 매수 잔량: %d)\n",
-                   order.quantity, available_buying_balance);
-            log_message("WARNING", "OrderProcessor", "주문 거부 - 매수 잔량 부족: 종목: %s, 주문 수량: %d, 가용 매수 잔량: %d",
-                        order.stock_code, order.quantity, available_buying_balance);
-
             execution.header.tr_id = KFT_EXECUTION;
             execution.header.length = sizeof(kft_execution);
             strcpy(execution.transaction_code, order.transaction_code);
@@ -231,6 +226,12 @@ void process_orders() {
             strcpy(execution.original_order, order.original_order);
             strcpy(execution.reject_code, "E205");
             send_execution_to_queue(execution_queue_id, &execution);
+
+            printf("[WARNING] 주문 거부 - 매수 잔량 부족 (주문 수량: %d, 가용 매수 잔량: %d)\n",
+                   order.quantity, available_buying_balance);
+            log_message("WARNING", "OrderProcessor", "주문 거부 - 매수 잔량 부족: 종목: %s, 주문 수량: %d, 가용 매수 잔량: %d",
+                        order.stock_code, order.quantity, available_buying_balance);
+
             continue;
         }
 
@@ -238,13 +239,12 @@ void process_orders() {
 
 
 
-        // 체결 여부 결정 (거래 코드 뒷자리가 3 또는 7이면 미체결)
-        if (order.transaction_code[5] == '3' || order.transaction_code[5] == '7') {
-            printf("미체결 처리. 거래 코드: %s\n", order.transaction_code);
-            log_message("INFO", "OrderProcessor", "미체결 주문. 거래 코드: %s", order.transaction_code);
-            
+        // 체결 여부 결정 (거래 코드 뒷자리가 3,6,9 이면 미체결)
+        if (order.transaction_code[5] == '3' || order.transaction_code[5] == '6' || order.transaction_code[5] == '9' ) {
             // 시세 프로세스에 미체결된 주문 전달
             send_to_queue(stock_system_que_id, 2, order.stock_code, order.order_type,  order.price, order.quantity);
+            printf("[INFO] 미체결 처리. 거래 코드: %s\n", order.transaction_code);
+            log_message("INFO", "OrderProcessor", "미체결 주문. 거래 코드: %s", order.transaction_code);
             
             continue;
         }
@@ -263,6 +263,7 @@ void process_orders() {
         
         // 체결 데이터 DB에 기록
         insert_execution(conn, &execution, order.quantity);
+        printf("[INFO] 거래 체결 완료 - 거래 코드: %s, 가격: %d, 수량: %d\n", order.transaction_code, order.price, order.quantity);
         log_message("INFO", "OrderProcessor", "거래 체결. 거래 코드: %s", order.transaction_code);
             
         // 시세 프로세스에 체결된 주문 정보 전달
@@ -277,7 +278,7 @@ void process_orders() {
 
 
 int main() {
-    printf("매칭 엔진 시작\n");
+    printf("[NOTICE] 매칭 엔진 시작\n");
     log_message("NOTICE", "Server", "매칭 엔진 서버 시작.");
     process_orders();
     return 0;
