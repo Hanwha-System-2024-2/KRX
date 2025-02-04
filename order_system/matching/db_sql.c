@@ -10,20 +10,20 @@
 MYSQL *connect_to_mysql() {
     MYSQL *conn = mysql_init(NULL);
     if (conn == NULL) {
-        printf("mysql_init() 실패\n");
-        log_message("ERROR", "Database", "mysql_init() 실패");
+        printf("[ERROR] mysql_init() 실패\n");
+        log_message("ERROR", "[%s] Database: mysql_init() 실패",get_timestamp_char());
         exit(1);
     }
 
     if (mysql_real_connect(conn, DB_HOST, DB_USER, DB_PASS, DB_NAME, 0, NULL, 0) == NULL) {
-        printf("MySQL 연결 실패: %s\n", mysql_error(conn));
-        log_message("ERROR", "Database", "MySQL 연결 실패: %s", mysql_error(conn));
+        printf("[ERROR] MySQL 연결 실패: %s\n", mysql_error(conn));
+        log_message("ERROR", "[%s] Database: MySQL 연결 실패: %s",get_timestamp_char() , mysql_error(conn));
         mysql_close(conn);
         exit(1);
     }
 
-    printf("MySQL 연결 성공!\n");
-    log_message("NOTICE", "Database", "MySQL 연결 성공");
+    printf("[TRACE] MySQL 연결 성공!\n");
+    log_message("TRACE", "[%s] Database: MySQL 연결 성공",get_timestamp_char());
     return conn;  // 연결 객체 반환
 }
 
@@ -40,11 +40,11 @@ void insert_order(MYSQL *conn, fkq_order *order) {
 
 
     if (mysql_query(conn, query)) {
-        printf("INSERT 실패: %s\n쿼리: %s\n", mysql_error(conn), query);
-        log_message("ERROR", "Database", "INSERT 실패: %s | Query: %s", mysql_error(conn), query);
+        printf("[ERROR] INSERT 실패: %s\n쿼리: %s\n", mysql_error(conn), query);
+        log_message("ERROR", "[%s] Database: INSERT 실패.  %s | Query: %s",get_timestamp_char() , mysql_error(conn), query);
     } else {
-        printf("데이터 삽입 성공! 거래 코드: %s\n", order->transaction_code);
-        log_message("TRACE", "Database", "주문 데이터 저장 완료. 거래 코드: %s", order->transaction_code);
+        printf("[TRACE] 데이터 삽입 성공! 거래 코드: %s\n", order->transaction_code);
+        log_message("TRACE", "[%s] Database: 주문 데이터 저장 완료. 거래 코드: %s",get_timestamp_char(), order->transaction_code);
     }
 }
 // 체결 데이터 MySQL 저장 함수
@@ -63,18 +63,18 @@ void insert_execution(MYSQL *conn, kft_execution *execution, const int executed_
 
 
     if (mysql_query(conn, query_execution)) {
-        printf( "INSERT 실패: %s\n쿼리: %s\n", mysql_error(conn), query_execution);
-        log_message("ERROR", "Database", "INSERT 실패: %s | Query: %s", mysql_error(conn), query_execution);
+        printf( "[ERROR] INSERT 실패: %s\n쿼리: %s\n", mysql_error(conn), query_execution);
+        log_message("ERROR", "[%s] Database: INSERT 실패: %s | Query: %s", get_timestamp_char(), mysql_error(conn), query_execution);
     } else {
-        printf("데이터 삽입 성공! 거래 코드: %s\n", execution->transaction_code);
-        log_message("TRACE", "Database", "체결정보 저장 완료. 거래 코드: %s", execution->transaction_code);
+        printf("[TRACE] 데이터 삽입 성공! 거래 코드: %s\n", execution->transaction_code);
+        log_message("TRACE", "[%s] Database: 체결정보 저장 완료. 거래 코드: %s", get_timestamp_char(), execution->transaction_code);
         if (mysql_query(conn, query_update)) {
-            printf( "UPDATE 실패: %s\n쿼리: %s\n", mysql_error(conn), query_update);
-            log_message("ERROR", "Database", "주문 상태 변경 실패: %s | Query: %s", mysql_error(conn), query_execution);
+            printf( "[ERROR] UPDATE 실패: %s\n쿼리: %s\n", mysql_error(conn), query_update);
+            log_message("ERROR", "[%s] Database: 주문 상태 변경 실패: %s | Query: %s", get_timestamp_char(), mysql_error(conn), query_execution);
 
         } else {
-            printf("상태 업데이트 성공! 거래 코드: %s\n", execution->transaction_code);
-            log_message("TRACE", "Database", "주문 상태 변경 완료. 거래 코드: %s", execution->transaction_code);
+            printf("[TRACE] 상태 업데이트 성공! 거래 코드: %s\n", execution->transaction_code);
+            log_message("TRACE", "[%s] Database: 주문 상태 변경 완료. 거래 코드: %s", get_timestamp_char(), execution->transaction_code);
         }
         // DB 에러도 에러코드 추가해서 반환
     }

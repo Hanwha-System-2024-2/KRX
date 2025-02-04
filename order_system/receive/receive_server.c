@@ -22,8 +22,8 @@ void process_order(int client_socket, fkq_order *order, int que_id) {
 
     // 전문 프로토콜 유효성 검증
     if(order->header.tr_id !=FKQ_ORDER){
-        printf("[WARNING] 잘못된 요청. 전문 ID: %d\n", order->header.tr_id);
-        log_message("WARNING", "OrderProcessor", "잘못된 요청. 전문 ID: %d", order->header.tr_id);
+        printf("[WARN] 잘못된 요청. 전문 ID: %d\n", order->header.tr_id);
+        log_message("WARN", "[%s] OrderProcessor: 잘못된 요청. 전문 ID: %d", get_timestamp_char(), order->header.tr_id);
 
         response.header.tr_id=KFT_ORDER;
         response.header.length = sizeof(kft_order);
@@ -41,9 +41,8 @@ void process_order(int client_socket, fkq_order *order, int que_id) {
     }
     // 전문 길이 검증
     if (order->header.length != sizeof(fkq_order)) {
-        printf("[INFO] 주문 수신 - 종목: %s, 거래코드: %s, 유저: %s, 수량: %d, 가격: %d\n",
-           order->stock_code, order->transaction_code, order->user_id, order->quantity, order->price);
-        log_message("WARNING", "OrderProcessor", "잘못된 전문 길이: %d (예상: %lu)", order->header.length, sizeof(fkq_order));
+        printf("[WARN] 잘못된 전문 길이: %d (예상: %lu)", order->header.length, sizeof(fkq_order));
+        log_message("WARN", "[%s] OrderProcessor: 잘못된 전문 길이: %d (예상: %lu)", get_timestamp_char(), order->header.length, sizeof(fkq_order));
 
         
         response.header.tr_id=KFT_ORDER;
@@ -63,8 +62,8 @@ void process_order(int client_socket, fkq_order *order, int que_id) {
     // 주문 요청 수신 완료
     printf("[INFO] 주문 요청 수신 - 종목: %s %s, 거래코드: %s, 유저: %s, 유형: %c, 수량: %d, 시간: %s, 지정가: %d, 원주문번호: %s\n",
         order->stock_code, order->stock_name, order->transaction_code, order->user_id, order->order_type, order->quantity, order->order_time, order->price, order->original_order);
-    log_message("INFO", "OrderProcessor", "주문 수신 - 종목: %s, 거래코드: %s, 유저: %s, 수량: %d, 가격: %d",
-        order->stock_code, order->transaction_code, order->user_id, order->quantity, order->price);
+    log_message("INFO", "[%s] OrderProcessor: 주문 수신 - 종목: %s, 거래코드: %s, 유저: %s, 수량: %d, 가격: %d",
+        get_timestamp_char(), order->stock_code, order->transaction_code, order->user_id, order->quantity, order->price);
 
     // 주문 응답 전송
     response.header.tr_id=KFT_ORDER;
@@ -92,20 +91,21 @@ int main() {
 
     int que_id= init_message_queue(ORDER_QUEUE_ID);
 
+    log_file_path=RECERIVE_LOG_FILE;
     open_log_file();
 
-    log_message("NOTICE", "Server", "주문 수신 서버 시작. 포트: %d", PORT);
-    printf("[NOTICE] 주문 수신 서버 시작. 포트: %d\n", PORT);
+    log_message("TRACE", "[%s] Server: 주문 수신 서버 시작. 포트: %d", get_timestamp_char(), PORT);
+    printf("[TRACE] 주문 수신 서버 시작. 포트: %d\n", PORT);
 
     // 소켓 생성
     server_fd = socket(AF_INET, SOCK_STREAM, 0);     // IPv4 기반, TCP 소켓, 자동으로 적절한 프로토콜 사용
     if (server_fd == -1) {
         perror("[ERROR] 소켓 생성 실패");
-        log_message("ERROR", "Server", "소켓 생성 실패");
+        log_message("ERROR", "[%s] Server: 소켓 생성 실패", get_timestamp_char());
         exit(EXIT_FAILURE);
     }
-    printf("[NOTICE] 소켓 생성 성공. 소켓 번호: %d\n", server_fd);
-    log_message("NOTICE", "Server", "소켓 생성 성공. 소켓 번호: %d", server_fd);
+    printf("[TRACE] 소켓 생성 성공. 소켓 번호: %d\n", server_fd);
+    log_message("TRACE", "[%s] Server: 소켓 생성 성공. 소켓 번호: %d", get_timestamp_char(), server_fd);
     
 
     address.sin_family = AF_INET;                    // IPv4 주소 체계
@@ -115,31 +115,31 @@ int main() {
     // 바인딩: 소켓과 포트를 연결
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
         perror("[ERROR] 바인딩 실패");
-        log_message("ERROR", "Server", "바인딩 실패");
+        log_message("ERROR", "[%s] Server: 바인딩 실패", get_timestamp_char());
         exit(EXIT_FAILURE);
     }
 
     // 리스닝 (클라이언트 1명)
     if (listen(server_fd, 1) < 0) {
         perror("[ERROR] 리스닝 실패");
-        log_message("ERROR", "Server", "리스닝 실패");
+        log_message("ERROR", "[%s] Server: 리스닝 실패", get_timestamp_char());
         exit(EXIT_FAILURE);
     }
 
-    printf("[NOTICE] 거래소 주문 응답 서버 시작. 포트: %d\n", PORT);
-    log_message("NOTICE", "Server", "클라이언트 연결 대기 중...");
+    printf("[TRACE] 거래소 주문 응답 서버 시작. 포트: %d\n", PORT);
+    log_message("TRACE", "[%s] Server: 클라이언트 연결 대기 중...", get_timestamp_char());
 
     while (1) {
     // 클라이언트 연결 대기 (한 번만 실행)
         client_socket = accept(server_fd, (struct sockaddr *)&address, &addrlen);
         if (client_socket < 0) {
             perror("[ERROR] 클라이언트 연결 실패");
-            log_message("ERROR", "Server", "클라이언트 연결 실패");
+            log_message("ERROR", "[%s] Server: 클라이언트 연결 실패", get_timestamp_char());
             // exit(EXIT_FAILURE);
             continue;
         }
-        printf("[NOTICE] 클라이언트 연결됨. 소켓 번호: %d\n", client_socket);
-        log_message("NOTICE", "Server", "클라이언트 연결됨. 소켓 번호: %d",client_socket);
+        printf("[TRACE] 클라이언트 연결됨. 소켓 번호: %d\n", client_socket);
+        log_message("TRACE", "[%s] Server: 클라이언트 연결됨. 소켓 번호: %d", get_timestamp_char(),client_socket);
 
         // 클라이언트와 통신
         while (1) {
@@ -151,8 +151,8 @@ int main() {
             int bytes_read = recv(client_socket, recv_buffer, 4096, 0);
 
             if (bytes_read <= 0) {  // 클라이언트 종료 감지
-                printf("[NOTICE] 클라이언트 연결 종료\n");
-                log_message("NOTICE", "Server", "클라이언트 연결 종료");
+                printf("[TRACE] 클라이언트 연결 종료\n");
+                log_message("TRACE", "[%s] Server: 클라이언트 연결 종료", get_timestamp_char());
                 close(client_socket);
                 break; // 내부 루프 종료 후 다시 accept() 대기
             }
@@ -174,7 +174,7 @@ int main() {
     // 마지막에만 소켓 닫기
     close(client_socket);
     close(server_fd);
-    log_message("NOTICE", "Server", "소켓 close");
+    log_message("TRACE", "[%s] Server: 소켓 close", get_timestamp_char());
 
     close_log_file();
     return 0;
