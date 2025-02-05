@@ -4,19 +4,14 @@
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
+#include "../headers/kmt_common.h"
 
-// 메시지 구조체
-typedef struct {
-    long msgtype; 
-    char stock_code[7];  // 종목 코드
-    char order_type;     // 'B' (매수) or 'S' (매도)
-    int price;           // 체결 가격
-    int quantity;        // 체결 수량
-} msgbuf;
 
 int main() {
     int key_id;
-    msgbuf msg;
+    ExecutionMessage msg;
+
+
 
     // 메시지 큐 생성 또는 연결
     key_id = msgget((key_t)1234, IPC_CREAT | 0666);
@@ -30,6 +25,8 @@ int main() {
     while (1) {
         // 메시지 초기화
         msg.msgtype = 2;  // 메시지 유형
+        msg.exectype =2;
+        strcpy(msg.transaction_code, "112312");
         printf("Enter stock code (6 characters): ");
         scanf("%6s", msg.stock_code);
 

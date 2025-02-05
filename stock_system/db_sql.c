@@ -217,7 +217,7 @@ kmt_stock_infos getStockInfo(MYSQL *conn) {
 
 	MYSQL_ROW row;
 	int i=0;
-	while((row = mysql_fetch_row(result))) {
+	while(row = mysql_fetch_row(result)) {
 		strcpy(data.body[i].stock_code, row[0]);
 		strcpy(data.body[i].stock_name, row[1]);
 		i++;
@@ -232,9 +232,14 @@ void updateMarketPricesAuto(MYSQL* conn) {
 	ExecutionMessage hanwha;
 	ExecutionMessage samsung;
 	hanwha.msgtype=1;
+	hanwha.exectype=0;
 	samsung.msgtype=1;
+	samsung.exectype=0;
+
 	strcpy(hanwha.stock_code, "272210");
 	strcpy(samsung.stock_code, "005930");
+	strcpy(hanwha.transaction_code, "111111");
+	strcpy(samsung.transaction_code, "222222");
 
 	// 매수/매도
 	if(rand()%2==1) {
@@ -264,12 +269,12 @@ void updateMarketPricesAuto(MYSQL* conn) {
 	hanwha.quantity=rand()%100+1;
 	samsung.quantity=rand()%100+1;
 	
-	updateMarketPrices(conn, &hanwha, 2);
-	updateMarketPrices(conn, &samsung, 2);
+	updateMarketPrices(conn, &hanwha, hanwha.exectype);
+	updateMarketPrices(conn, &samsung, samsung.exectype);
 }
 
 
-int updateMarketPrices(MYSQL *conn, ExecutionMessage* msg, int type) { //type 1: 체결, type 2: 미체결
+int updateMarketPrices(MYSQL *conn, ExecutionMessage* msg, int type) { //type 1: 체결, type 0: 미체결
 	int result=1;
 	char query[512];
 	int closing_price=0;
@@ -277,14 +282,14 @@ int updateMarketPrices(MYSQL *conn, ExecutionMessage* msg, int type) { //type 1:
 	int lowest_price;
 	int highest_price;
 	char fluctuation_rate[11];
-	char market_time[19];
+	char market_time[15];
 	ResultStockMessage data;
 
 
 	format_current_time(market_time);
 	strcpy(data.stock_code, msg->stock_code);
 	
-	
+	// printf("stock_code: %s", msg->stock_code);
 	// 전일 종가, 고가, 저가 불러오기
 	if(mysql_query(conn, "select stock_code, closing_price, high_price, low_price from market_prices")) {
 		finish_with_error(conn);
@@ -297,7 +302,7 @@ int updateMarketPrices(MYSQL *conn, ExecutionMessage* msg, int type) { //type 1:
 	MYSQL_ROW row;
 	int existFlag=1;
 	while((row=mysql_fetch_row(sql_result))) {
-		
+		// printf("row[0]: %s, stock code: %s", row[0], msg->stock_code);
 		if(strcmp(row[0], msg->stock_code)==0) { // 업데이트된 종목 코드일 때 시세 업데이트하기 
 			closing_price = atoi(row[1]);
 			highest_price = atoi(row[2]);
@@ -364,13 +369,13 @@ int updateMarketPrices(MYSQL *conn, ExecutionMessage* msg, int type) { //type 1:
 		    	"UPDATE market_prices "
        		     	"SET stock_price = %d, volume = volume + %d, buying_balance = buying_balance + %d, fluctuation_rate = '%s', contrast = %d,  time =%s "
 	       	     	"WHERE stock_code = '%s'",
-		    	msg->price, msg->quantity, msg->quantity, fluctuation_rate, contrast, market_time, msg->stock_code, msg->quantity);
+		    	msg->price, msg->quantity, msg->quantity, fluctuation_rate, contrast, market_time, msg->stock_code);
 		}  else if(msg->order_type == 'S') {
 			snprintf(query, sizeof(query),
             		"UPDATE market_prices "
 	            	"SET stock_price = %d, volume = volume + %d, selling_balance = selling_balance + %d, fluctuation_rate= '%s', contrast = %d, time=%s "
         	    	"WHERE stock_code = '%s'",
-			msg->price, msg->quantity, msg->quantity, fluctuation_rate, contrast, market_time, msg->stock_code, msg->quantity);
+			msg->price, msg->quantity, msg->quantity, fluctuation_rate, contrast, market_time, msg->stock_code);
 		} else {
 		    fprintf(stderr, "Invalid order_type: %c\n", msg->order_type);
 		    return 0;	
@@ -398,10 +403,12 @@ int updateMarketPrices(MYSQL *conn, ExecutionMessage* msg, int type) { //type 1:
         msg->stock_code, msg->price, msg->quantity, fluctuation_rate, market_time);
 	
 	// 파일에 직접 기록
-	FILE *log_file = fopen("/home/ec2-user/KRX/log/update_market_price.log", "a");
+	if(strcmp(msg->transaction_code, "111111")==0 || strcmp(msg->transaction_code, "222222")==0) return result; // 111111 또는 222222이면 로그 저장 x
+
+	FILE *log_file = fopen(UPDATE_MARKET_LOG_FILE, "a");
 	if (log_file) {
-		fprintf(log_file, "[MarketPriceUpdater] Stock Code: %s, Price: %d, Quantity: %d, Fluctuation Rate: %s, Time: %s\n",
-				msg->stock_code, msg->price, msg->quantity, fluctuation_rate, market_time);
+		fprintf(log_file, "[INFO] Stock Code: %s, Transaction Code: %s, Price: %d, Quantity: %d, Fluctuation Rate: %s, Time: %s\n",
+				msg->stock_code, msg->transaction_code, msg->price, msg->quantity, fluctuation_rate, market_time);
 		fclose(log_file);
 	}
 	
