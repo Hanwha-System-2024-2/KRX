@@ -13,7 +13,7 @@
 #include "../headers/krx_messages.h"
 #define MAX_MSG_SIZE 512
 #define QUEUE_KEY 5678
-#define LOG_FILE "/home/ec2-user/KRX/log/update_market_price.log"
+// #define LOG_FILE "/home/ec2-user/KRX/log/update_market_price.log"
 
 
 // 메시지 구조체 정의
@@ -96,7 +96,7 @@ void display_execution() {
     int scroll_offset = 0; // 화면 스크롤 오프셋
 
     while (1) {
-        log_file = fopen(LOG_FILE, "r");
+        log_file = fopen(UPDATE_MARKET_LOG_FILE, "r");
         if (!log_file) {
             mvprintw(1, 2, "로그 파일을 열 수 없습니다.");
             refresh();
@@ -118,7 +118,7 @@ void display_execution() {
         // 파일에서 로그 읽기
         char line[1024];
         while (fgets(line, sizeof(line), log_file)) {
-            if (strstr(line, "[MarketPriceUpdater]")) { // 로그 필터링
+            if (strstr(line, "[INFO]")) { // 로그 필터링
                 stored_lines = realloc(stored_lines, (line_count + 1) * sizeof(char *));
                 stored_lines[line_count] = strdup(line);
                 line_count++;
@@ -135,13 +135,13 @@ void display_execution() {
 
         int row = 5;
         for (int i = scroll_offset; i < line_count && row < LINES - 2; i++) {
-            char stock_code[7], fluctuation_rate[11], market_time[19];
+            char stock_code[7], transaction_code[7], fluctuation_rate[11], market_time[19];
             int price, quantity;
 
             // 저장된 로그 파싱
-            if (sscanf(stored_lines[i],
-                       "[MarketPriceUpdater] Stock Code: %6s, Price: %d, Quantity: %d, Fluctuation Rate: %10[^,], Time: %14s",
-                       stock_code, &price, &quantity, fluctuation_rate, market_time) == 5) {
+            if (sscanf(stored_lines[i],                    
+                       "[INFO] Stock Code: %6s, Transaction Code: %6s, Price: %d, Quantity: %d, Fluctuation Rate: %10[^,], Time: %14s",
+                       stock_code, transaction_code, &price, &quantity, fluctuation_rate, market_time) == 6) {
                 mvprintw(row++, 2, "%-15s %-10d %-10d %-15s %-15s",
                          stock_code, price, quantity, fluctuation_rate, market_time);
             } else {

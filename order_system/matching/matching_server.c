@@ -267,7 +267,7 @@ void process_orders() {
 
         // 시세 프로세스에 체결된 주문 정보 전달
         send_to_queue(stock_system_que_id, 1, order.stock_code, order.transaction_code, order.order_type, execution.executed_price,order.quantity);
-        log_message("INFO", "Stock Code: %s, Transaction Code: %s, Order Type:%d, Execution: 1, Price: %d, Quantity: %d, Time: %s",order.stock_code,order.transaction_code, order.order_type, order.price, order.quantity, get_timestamp_char_long());
+        log_message("INFO", "Stock Code: %s, Transaction Code: %s, Order Type: %c, Execution: 1, Price: %d, Quantity: %d, Time: %s",order.stock_code,order.transaction_code, order.order_type, order.price, order.quantity, get_timestamp_char_long());
 
         // 체결 전문 송신 프로세스에 체결 전문 전달
         send_execution_to_queue(execution_queue_id,&execution);

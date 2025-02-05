@@ -28,7 +28,7 @@ typedef struct  {
     char order_type;     // 'B' (매수) or 'S' (매도)
     int price;  // 체결 가격
     int quantity; // 체결 수량
-    char time[19]; // 체결 시간
+    char time[15]; // 체결 시간
 } ExecutionMessageInfo;
 
 int send_data(int client_socket, MYSQL* conn) {
@@ -51,7 +51,7 @@ int send_data(int client_socket, MYSQL* conn) {
 int recv_data(int client_socket, MYSQL* conn) {
     fd_set read_fds;
     struct timeval timeout;
-    char buffer[1024];
+    char buffer[512];
     
     // init 
     memset(buffer, 0, sizeof(buffer));
@@ -83,14 +83,14 @@ int recv_data(int client_socket, MYSQL* conn) {
     }
 
     // 수신한 데이터 처리
-    // printf("Received: %s\n", buffer);
+    printf("Received: %s\n", buffer);
     
     
     // DB에서 종목 데이터 가져오기
     kmt_stock_infos data;
     memset(&data, 0, sizeof(data));
     data=getStockInfo(conn);
-    
+    printf("[종목 정보 전송] stock code: %s, stock name: %s\n", data.body->stock_code, data.body->stock_name);
     // 데이터 전송
     if (send(client_socket, &data, sizeof(data), 0) < 0) {
         perror("Failed to send data");
@@ -105,6 +105,7 @@ void handle_client_recv(int client_socket, MYSQL* conn) {
         int recv_result = recv_data(client_socket, conn);
         if (recv_result == 1) break; // 클라이언트 종료 시 루프 종료
     }
+    mysql_close(conn);
     close(client_socket);
     exit(0);  // 자식 프로세스 종료
 }
@@ -168,20 +169,29 @@ int main() {
     if(msg_queue_pid==0) {
         // 자식 프로세스: 메시지 큐 처리
         while (1) {
-            // 체결 메시지
+            // 우선 순위
             if (msgrcv(original_key_id, &msg, sizeof(msg), 1, IPC_NOWAIT) != -1) {
                 
                 // 시세 업데이트
-                int update_result = updateMarketPrices(conn, &msg, 1);
+                int update_result = updateMarketPrices(conn, &msg, msg.exectype);
                 if (update_result == 0) {
                     printf("[NO UPDATE MESSAGE 1]\n");
                 } else {
                     printf("[UPDATED MESSAGE 1]\n");
                 }
             }
-            // 미체결 메시지
+            // 일반 메시지
             if (msgrcv(original_key_id, &msg, sizeof(msg), 2, IPC_NOWAIT) != -1) {
-                int update_result = updateMarketPrices(conn, &msg, 2);
+                int update_result = updateMarketPrices(conn, &msg, msg.exectype);
+                if (update_result == 0) {
+                    printf("[NO UPDATE MESSAGE 2]\n");
+                } else {
+                    printf("[UPDATED MESSAGE 2]\n");
+                }
+            }
+            // 후순위 메시지
+            if (msgrcv(original_key_id, &msg, sizeof(msg), 3, IPC_NOWAIT) != -1) {
+                int update_result = updateMarketPrices(conn, &msg, msg.exectype);
                 if (update_result == 0) {
                     printf("[NO UPDATE MESSAGE 2]\n");
                 } else {
@@ -216,7 +226,8 @@ int main() {
         }
 
         if (recv_pid == 0) {
-            handle_client_recv(client_socket, conn);
+            MYSQL *stock_conn = connect_to_mysql();
+            handle_client_recv(client_socket, stock_conn);
         }
         else{
             // 부모 프로세스: 클라이언트와 데이터 시세 데이터 5 초간격 송신 처리
