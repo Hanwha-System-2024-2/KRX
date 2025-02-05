@@ -34,8 +34,9 @@ int extract_execution_messages(const char *filename, ExecutionMessage messages[M
                 &messages[*count].exectype,
                 &messages[*count].price,
                 &messages[*count].quantity) == 6) {
-                (*count)++;
-                if (*count >= MAX_TRANSACTIONS) break;  // 최대 저장 개수 초과 방지
+                    messages[*count].msgtype=1;
+                    (*count)++;
+                    if (*count >= MAX_TRANSACTIONS) break;  // 최대 저장 개수 초과 방지
             }
         }
     }
@@ -93,7 +94,7 @@ void send_message_queue(const ExecutionMessage *msg) {
     if (msgsnd(msgid, msg, sizeof(ExecutionMessage) - sizeof(long), 0) == -1) {
         printf("msgsnd failed\n");
     } else {
-        printf("Message sent: Transaction Code %s missing in update_market.log\n", msg->transaction_code);
+        printf("Message sent: Transaction Code %s\n", msg->transaction_code);
     }
 }
 
@@ -128,8 +129,8 @@ void monitor_logs() {
             }
         }
         if (!found) {
-            printf("Missing transaction code detected: %s\n", match_messages[i].transaction_code);
-            // send_message_queue(&match_messages[i]);  // 메시지 큐 전송
+            // printf("Missing transaction code detected: %s\n", match_messages[i].transaction_code);
+            send_message_queue(&match_messages[i]);  // 메시지 큐 전송
         }
     }
 }
