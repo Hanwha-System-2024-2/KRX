@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <time.h>
@@ -9,6 +10,7 @@
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <sys/select.h>
+#include <sys/wait.h>
 #include <errno.h>
 #include "../headers/kmt_common.h"
 #include "../headers/krx_messages.h"
@@ -20,8 +22,6 @@
 #endif
 
 
-
-
 typedef struct  {
     long msgtype; // 1: 체결  2: 미체결 
     char stock_code[7];  // 종목 코드
@@ -30,6 +30,10 @@ typedef struct  {
     int quantity; // 체결 수량
     char time[15]; // 체결 시간
 } ExecutionMessageInfo;
+
+void sigchld_handler(int signo) {
+    while (waitpid(-1, NULL, WNOHANG) > 0);  // 좀비 프로세스 제거
+}
 
 int send_data(int client_socket, MYSQL* conn) {
     kmt_current_market_prices data;
@@ -151,6 +155,7 @@ int init_message_queue(int key_id) {
 }
 
 int main() {
+    signal(SIGCHLD, sigchld_handler);
     //============ 메세지 큐 연결 =============
     int original_key_id=init_message_queue(STOCK_SYSTEM_QUEUE_ID);
     ExecutionMessage msg;
@@ -216,48 +221,59 @@ int main() {
 
     } else { // TCP 통신
         
-        
-        client_socket = accept(server_fd, (struct sockaddr *)&client_addr, &addr_len);
-        if (client_socket < 0) {
-            perror("Accept failed");
-            exit(EXIT_FAILURE);
-        }
-        printf("Client connected\n");
-        
-        
-        
-        // 수신 프로세스 생성 : 로그인 정보를 받고, 종목 정보 데이터를 전송하는 프로세스
-        pid_t recv_pid = fork();
-        if (recv_pid < 0) {
-            perror("Fork failed");
-            close(client_socket);
-            exit(EXIT_FAILURE);
-        }
-
-        if (recv_pid == 0) {
-            MYSQL *stock_conn = connect_to_mysql();
-            handle_client_recv(client_socket, stock_conn);
-            mysql_close(stock_conn);
-        }
-        else{
-            MYSQL *conn = connect_to_mysql();
-            // 부모 프로세스: 클라이언트와 데이터 시세 데이터 5 초간격 송신 처리
-            int send_result = 0;
-            
-            while (1) {
-                send_result = send_data(client_socket, conn);
-                if (send_result == 1) break;
-                // 랜덤 시세 변경 함수
-                updateMarketPricesAuto(conn);
-                sleep(2); // 2초마다 데이터 전송
+        while(1){
+            client_socket = accept(server_fd, (struct sockaddr *)&client_addr, &addr_len);
+            if (client_socket < 0) {
+                perror("Accept failed");
+                exit(EXIT_FAILURE);
             }
-            close(client_socket);
-            close(server_fd);
-            mysql_close(conn);
-            // 자식 프로세스 종료 대기
-            kill(msg_queue_pid, SIGTERM);
-            kill(recv_pid, SIGTERM);
+            printf("Client connected\n");
+            
+            
+            
+            // 수신 프로세스 생성 : 로그인 정보를 받고, 종목 정보 데이터를 전송하는 프로세스
+            pid_t recv_pid = fork();
+            if (recv_pid < 0) {
+                perror("Fork failed");
+                close(client_socket);
+                exit(EXIT_FAILURE);
+            }
+
+            if (recv_pid == 0) {
+                MYSQL *stock_conn = connect_to_mysql();
+                handle_client_recv(client_socket, stock_conn);
+                mysql_close(stock_conn);
+            }
+            else{
+                // 클라이언트 처리 프로세스 실행
+                pid_t client_pid = fork();
+                
+
+                if(client_pid==0) {
+                    MYSQL *conn = connect_to_mysql();
+                    // 클라이언트와 데이터 시세 데이터 5 초간격 송신 처리
+                    close(server_fd);
+                    int send_result = 0;
+                
+                    while (1) {                        
+                        send_result = send_data(client_socket, conn);
+                        if (send_result == 1) break;
+                        // 랜덤 시세 변경 함수
+                        updateMarketPricesAuto(conn);
+                        sleep(2); // 2초마다 데이터 전송
+                    }
+                    
+                    mysql_close(conn);
+                    exit(0);
+                }
+            
+                close(client_socket);
+                // 자식 프로세스 종료 대기
+                kill(msg_queue_pid, SIGTERM);
+                kill(recv_pid, SIGTERM);
+            }
         }
+        
         
     }
 
