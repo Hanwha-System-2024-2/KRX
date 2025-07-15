@@ -1,9 +1,9 @@
 #include "../headers/kft_log.h"
 #include <time.h>
 
-#define RECERIVE_LOG_FILE "/home/ec2-user/KRX/log/receive_server.log"
-#define MATCH_LOG_FILE "/home/ec2-user/KRX/log/match_server.log"
-#define SEND_LOG_FILE "/home/ec2-user/KRX/log/send_server.log"
+#define RECERIVE_LOG_FILE "/Users/julia/Documents/hanwha_intern/dev/KRX2/log/receive_server.log"
+#define MATCH_LOG_FILE "/Users/julia/Documents/hanwha_intern/dev/KRX2/log/match_server.log"
+#define SEND_LOG_FILE "/Users/julia/Documents/hanwha_intern/dev/KRX2/log/send_server.log"
 
 FILE *log_file = NULL;
 char *log_file_path = NULL;

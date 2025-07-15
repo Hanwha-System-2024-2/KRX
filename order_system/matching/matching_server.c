@@ -57,7 +57,7 @@ void get_latest_stock_info(MYSQL *conn) {
 
         if (mysql_query(conn, query)) {
             printf("[ERROR] MySQL query error: %s\n", mysql_error(conn));
-            log_message("ERROR", "[%s]StockData: 시세 데이터 확인 실패 (종목코드: %s)", get_timestamp_char(), stock_list[i].stock_code);
+            // log_message("ERROR", "[%s]StockData: 시세 데이터 확인 실패 (종목코드: %s)", get_timestamp_char(), stock_list[i].stock_code);
             return;
         }
 
@@ -76,9 +76,9 @@ void get_latest_stock_info(MYSQL *conn) {
         }
 
         mysql_free_result(result);
-        log_message("TRACE", "[%s] StockData: 종목 데이터 확인 (종목코드: %s, 전날종가: %d, 매수잔량: %d, 매도잔량: %d, 매수호가: %d, 매도호가: %d)",
-                    get_timestamp_char(), stock_list[i].stock_code, stock_list[i].closing_price, stock_list[i].buying_balance,
-                    stock_list[i].selling_balance, stock_list[i].bid_price, stock_list[i].ask_price);
+        // log_message("TRACE", "[%s] StockData: 종목 데이터 확인 (종목코드: %s, 전날종가: %d, 매수잔량: %d, 매도잔량: %d, 매수호가: %d, 매도호가: %d)",
+        //            get_timestamp_char(), stock_list[i].stock_code, stock_list[i].closing_price, stock_list[i].buying_balance,
+        //            stock_list[i].selling_balance, stock_list[i].bid_price, stock_list[i].ask_price);
     }
     print_stock_list();
 }
@@ -114,7 +114,7 @@ void process_orders() {
 
     fkq_order order;
     printf("[TRACE] 매칭 엔진 대기 중...\n");
-    log_message("TRACE", "[%s] Server: 매칭 엔진 대기 중...", get_timestamp_char());
+    // log_message("TRACE", "[%s] Server: 매칭 엔진 대기 중...", get_timestamp_char());
 
     while (1) {
         // 주문 수신 프로세스의 주문 정보 전달을 기다림
@@ -131,11 +131,11 @@ void process_orders() {
         } else {
             perror("[ERROR] msgrcv error");
         }
-
+        
         // 주문 정보 수신
         printf("[TRACE] 주문 수신: 종목 %s, 가격 %d, 수량 %d\n", order.stock_code, order.price, order.quantity);
-        log_message("TRACE", "[%s] OrderProcessor: 주문 수신 - 종목: %s, 거래코드: %s, 유저: %s, 수량: %d, 가격: %d", 
-                get_timestamp_char(), order.stock_code, order.transaction_code, order.user_id, order.quantity, order.price);
+        // log_message("TRACE", "[%s] OrderProcessor: 주문 수신 - 종목: %s, 거래코드: %s, 유저: %s, 수량: %d, 가격: %d", 
+        //        get_timestamp_char(), order.stock_code, order.transaction_code, order.user_id, order.quantity, order.price);
 
         // 주문 데이터 DB에 기록
         insert_order(conn, &order);
@@ -163,7 +163,7 @@ void process_orders() {
             send_execution_to_queue(execution_queue_id, &execution);
 
             printf("[WARN] 유효하지 않은 종목 코드: %s\n", order.stock_code);
-            log_message("WARN", "[%s] ExecutionProcessor: 주문 거부 - 존재하지 않는 종목 코드", get_timestamp_char());
+            // log_message("WARN", "[%s] ExecutionProcessor: 주문 거부 - 존재하지 않는 종목 코드", get_timestamp_char());
             continue;
         }
 
@@ -174,7 +174,7 @@ void process_orders() {
 
         if (order.price > upper_limit || order.price < lower_limit) {
             printf("[WARN] 주문 가격 초과: %d (허용 범위: %d ~ %d)\n", order.price, lower_limit, upper_limit);
-            log_message("WARN", "[%s] OrderProcessor: 상한가, 하한가를 벗어난 주문 요청 - 종목: %s, 주문 가격: %d (허용 범위: %d ~ %d)", get_timestamp_char(), order.stock_code, order.price, lower_limit, upper_limit);
+            // log_message("WARN", "[%s] OrderProcessor: 상한가, 하한가를 벗어난 주문 요청 - 종목: %s, 주문 가격: %d (허용 범위: %d ~ %d)", get_timestamp_char(), order.stock_code, order.price, lower_limit, upper_limit);
 
             // 체결 오류 반환 (거래 불가)
             
@@ -210,8 +210,8 @@ void process_orders() {
 
             printf("[WARN] 주문 거부- 매도 잔량 부족 (주문 수량: %d, 가용 매도 잔량: %d)\n",
                    order.quantity, available_selling_balance);
-            log_message("WARN", "[%s] OrderProcessor: 주문 거부 - 매도 잔량 부족: 종목: %s, 주문 수량: %d, 가용 매도 잔량: %d",
-                        get_timestamp_char(), order.stock_code, order.quantity, available_selling_balance);
+            // log_message("WARN", "[%s] OrderProcessor: 주문 거부 - 매도 잔량 부족: 종목: %s, 주문 수량: %d, 가용 매도 잔량: %d",
+            //            get_timestamp_char(), order.stock_code, order.quantity, available_selling_balance);
             
             continue;
         }
@@ -229,8 +229,8 @@ void process_orders() {
 
             printf("[WARN] 주문 거부 - 매수 잔량 부족 (주문 수량: %d, 가용 매수 잔량: %d)\n",
                    order.quantity, available_buying_balance);
-            log_message("WARN", "[%s] OrderProcessor: 주문 거부 - 매수 잔량 부족: 종목: %s, 주문 수량: %d, 가용 매수 잔량: %d",
-                        get_timestamp_char(), order.stock_code, order.quantity, available_buying_balance);
+            // log_message("WARN", "[%s] OrderProcessor: 주문 거부 - 매수 잔량 부족: 종목: %s, 주문 수량: %d, 가용 매수 잔량: %d",
+            //            get_timestamp_char(), order.stock_code, order.quantity, available_buying_balance);
 
             continue;
         }
@@ -244,7 +244,7 @@ void process_orders() {
             // 시세 프로세스에 미체결된 주문 전달
             send_to_queue(stock_system_que_id, 0, order.stock_code, order.transaction_code, order.order_type,  order.price, order.quantity);
             printf("[INFO] 미체결 처리. 거래 코드: %s\n", order.transaction_code);
-            log_message("INFO", "Stock Code: %s, Transaction Code: %s, Order Type:%d, Execution: 0, Price: %d, Quantity: %d, Time: %s",order.stock_code,order.transaction_code, order.order_type, order.price, order.quantity, get_timestamp_char_long());
+            // log_message("INFO", "Stock Code: %s, Transaction Code: %s, Order Type:%d, Execution: 0, Price: %d, Quantity: %d, Time: %s",order.stock_code,order.transaction_code, order.order_type, order.price, order.quantity, get_timestamp_char_long());
 
             continue;
         }
@@ -266,8 +266,8 @@ void process_orders() {
         printf("[INFO] 거래 체결 완료 - 거래 코드: %s, 가격: %d, 수량: %d\n", order.transaction_code, order.price, order.quantity);
 
         // 시세 프로세스에 체결된 주문 정보 전달
-        send_to_queue(stock_system_que_id, 1, order.stock_code, order.transaction_code, order.order_type, execution.executed_price,order.quantity);
-        log_message("INFO", "Stock Code: %s, Transaction Code: %s, Order Type: %c, Execution: 1, Price: %d, Quantity: %d, Time: %s",order.stock_code,order.transaction_code, order.order_type, order.price, order.quantity, get_timestamp_char_long());
+        // send_to_queue(stock_system_que_id, 1, order.stock_code, order.transaction_code, order.order_type, execution.executed_price,order.quantity);
+        // log_message("INFO", "Stock Code: %s, Transaction Code: %s, Order Type: %c, Execution: 1, Price: %d, Quantity: %d, Time: %s",order.stock_code,order.transaction_code, order.order_type, order.price, order.quantity, get_timestamp_char_long());
 
         // 체결 전문 송신 프로세스에 체결 전문 전달
         send_execution_to_queue(execution_queue_id,&execution);
@@ -280,9 +280,9 @@ void process_orders() {
 int main() {
     printf("[TRACE] 매칭 엔진 시작\n");
     log_file_path=MATCH_LOG_FILE;
-    open_log_file();
-    log_message("TRACE", "[%s] Server: 매칭 엔진 서버 시작.", get_timestamp_char());
+    // open_log_file();
+    // log_message("TRACE", "[%s] Server: 매칭 엔진 서버 시작.", get_timestamp_char());
     process_orders();
-    close_log_file();
+    // close_log_file();
     return 0;
 }

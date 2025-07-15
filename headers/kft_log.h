@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdarg.h>
+#include <string.h>
 
 #define RECERIVE_LOG_FILE "/home/ec2-user/KRX/log/receive_server.log"
 #define MATCH_LOG_FILE "/home/ec2-user/KRX/log/match_server.log"

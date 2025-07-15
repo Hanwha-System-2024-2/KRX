@@ -1,7 +1,8 @@
 # 컴파일러 및 플래그
 CC = gcc
 CFLAGS = -Wall -Wextra -g -I../headers
-LDFLAGS = -L/usr/lib64/mysql -lmysqlclient
+# LDFLAGS = -L/usr/lib64/mysql -lmysqlclient
+LDFLAGS = -L/opt/homebrew/lib -lmysqlclient
 
 # 실행 파일 이름
 TARGET = kft_matching_server
