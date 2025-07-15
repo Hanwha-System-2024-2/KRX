@@ -1,7 +1,11 @@
 {
     "files.associations": {
+        "*.ejs": "html",
         "kft_ipc.h": "c",
         "kft_log.h": "c",
-        "kft_db_sql.h": "c"
+        "kft_db_sql.h": "c",
+        "krx_messages.h": "c",
+        "kmt_common.h": "c",
+        "errno.h": "c"
     }
 }

@@ -7,10 +7,11 @@
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
-#include "/usr/include/mysql/mysql.h"
+#include "/opt/homebrew/opt/mysql/include/mysql/mysql.h"
 #include "../headers/kmt_common.h"
 #include "../headers/krx_messages.h"
 #include "../headers/kft_ipc.h"
+#include <kft_log.h>
 
 #define DB_HOST "localhost"
 #define DB_USER "root"
@@ -217,7 +218,7 @@ kmt_stock_infos getStockInfo(MYSQL *conn) {
 
 	MYSQL_ROW row;
 	int i=0;
-	while(row = mysql_fetch_row(result)) {
+	while(row == mysql_fetch_row(result)) {
 		strcpy(data.body[i].stock_code, row[0]);
 		strcpy(data.body[i].stock_name, row[1]);
 		i++;

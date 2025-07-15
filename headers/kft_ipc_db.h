@@ -2,7 +2,8 @@
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include "../headers/krx_messages.h"
-#include <mysql/mysql.h>
+//#include <mysql/mysql.h>
+#include "/opt/homebrew/opt/mysql/include/mysql/mysql.h"
 
 #define ORDER_QUEUE_ID 0001
 #define STOCK_SYSTEM_QUEUE_ID 1234

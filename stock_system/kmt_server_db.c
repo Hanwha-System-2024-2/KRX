@@ -5,7 +5,8 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <time.h>
-#include <mysql/mysql.h>
+//#include <mysql/mysql.h>
+#include "/opt/homebrew/opt/mysql/include/mysql/mysql.h"
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>

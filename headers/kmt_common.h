@@ -2,7 +2,10 @@
 #define KMT_COMMON_H
 
 #include "krx_messages.h"
-#include<mysql/mysql.h>
+//#include<mysql/mysql.h>
+#include "/opt/homebrew/opt/mysql/include/mysql/mysql.h"
+
+
 
 // 시세 조회
 kmt_current_market_prices getMarketPrice(MYSQL *conn);
@@ -11,7 +14,8 @@ kmt_current_market_prices getMarketPrice(MYSQL *conn);
 kmt_stock_infos getStockInfo(MYSQL *conn);
 
 // 시세 업데이트
-int updateMarketPrices();
+int updateMarketPrices(MYSQL *conn, ExecutionMessage* msg, int type);
+void updateMarketPricesAuto(MYSQL* conn);
 
 // 디비 연결
 MYSQL *connect_to_mysql();

@@ -1,9 +1,10 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-#define RECERIVE_LOG_FILE "/home/ec2-user/KRX/log/receive_server.log"
-#define MATCH_LOG_FILE "/home/ec2-user/KRX/log/match_server.log"
-#define SEND_LOG_FILE "/home/ec2-user/KRX/log/send_server.log"
+#define RECERIVE_LOG_FILE "../log/receive_server.log"
+#define MATCH_LOG_FILE "../log/match_server.log"
+#define SEND_LOG_FILE "../log/send_server.log"
+#define UPDATE_MARKET_LOG_FILE "../log/update_market.log"
 
 // 로그 파일 전역 변수
 extern FILE *log_file;

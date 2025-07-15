@@ -1,7 +1,8 @@
 #include <ncurses.h>
 #include <stdlib.h>
 #include <locale.h>
-#include <mysql/mysql.h>
+//#include <mysql/mysql.h>
+#include "/opt/homebrew/opt/mysql/include/mysql/mysql.h"
 #include <wchar.h>
 #include <sys/select.h>
 #include <sys/types.h>
@@ -9,11 +10,12 @@
 #include <sys/msg.h>
 #include <unistd.h>
 #include <string.h>
+#include <kft_log.h>
 #include "../headers/kmt_common.h"
 #include "../headers/krx_messages.h"
 #define MAX_MSG_SIZE 512
 #define QUEUE_KEY 5678
-// #define LOG_FILE "/home/ec2-user/KRX/log/update_market_price.log"
+
 
 
 // 메시지 구조체 정의
